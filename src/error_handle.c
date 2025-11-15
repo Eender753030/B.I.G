@@ -7,8 +7,9 @@
 
 static const char usage_hint[] = "Usage: big <command>";
 
-void MemoryError(char *func_name) {
-    fprintf(stderr, "Error: %s from %s\n", strerror(errno), func_name);
+void MemoryError(const char *func_name, const char *file_name, const int line) {
+    fprintf(stderr, "Error in function '%s' at line %d of %s: %s\n", func_name, line, file_name,
+            strerror(errno));
     exit(EXIT_FAILURE);
 }
 
@@ -17,7 +18,8 @@ void InputError() {
     exit(EXIT_FAILURE);
 }
 
-void MakeDirectoryError(char *func_name) {
-    fprintf(stderr, "Error: %s from %s\n", strerror(errno), func_name);
+void MakeDirectoryError(const char *func_name, const char *file_name, const int line) {
+    fprintf(stderr, "Error in function '%s' at line %d of %s: %s\n", func_name, line, file_name,
+            strerror(errno));
     exit(EXIT_FAILURE);
 }
