@@ -7,13 +7,9 @@
 
 static const char usage_hint[] = "Usage: big <command>";
 
-static inline void errno_error_handler(char *func_name) {
+void MemoryError(char *func_name) {
     fprintf(stderr, "Error: %s from %s\n", strerror(errno), func_name);
     exit(EXIT_FAILURE);
-}
-
-void MemoryError(char *func_name) {
-    errno_error_handler(func_name);
 }
 
 void InputError() {
@@ -22,5 +18,6 @@ void InputError() {
 }
 
 void MakeDirectoryError(char *func_name) {
-    errno_error_handler(func_name);
+    fprintf(stderr, "Error: %s from %s\n", strerror(errno), func_name);
+    exit(EXIT_FAILURE);
 }
