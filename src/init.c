@@ -18,7 +18,7 @@ void init() {
 
     printf("Start to initalize B.I.G structure...\n");
     if (mkdir(dir_name, 0775) == -1)
-        MakeDirectoryError(__func__, __LINE__, __FILE__);
+        ErrnoHandler(__func__, __LINE__, __FILE__);
 
     printf("Directory initalize complete\n");
 }
