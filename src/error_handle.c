@@ -1,6 +1,7 @@
 #include "error_handle.h"
 
 #include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,8 +13,46 @@ void ErrnoHandler(const char *func_name, const char *file_name, const int line) 
             strerror(errno));
     exit(EXIT_FAILURE);
 }
+void ErrorCustomMsg(const char *msg, ...) {
+    va_list args;
+    va_start(args, msg);
+
+    for (; *msg != '\0'; msg++) {
+        if (*msg == '%') {
+            msg++;
+            switch (*msg) {
+                case 's': {
+                    const char *str = va_arg(args, const char *);
+                    printf("%s", str ? str : "(null)");
+                    break;
+                }
+                case 'd': {
+                    int val = va_arg(args, int);
+                    printf("%d", val);
+                    break;
+                }
+                case '%':
+                    putchar('%');
+                    break;
+                default:
+                    putchar('%');
+                    putchar(*msg);
+            }
+        } else
+            putchar(*msg);
+    }
+
+    va_end(args);
+    exit(EXIT_FAILURE);
+}
 
 void InputError() {
     fprintf(stderr, "%s\n", usage_hint);
+    exit(EXIT_FAILURE);
+}
+
+void NotInitError() {
+    fprintf(stderr,
+            "Error: Not a initalized directory. Use 'big init' to initalize current directory\n");
     exit(EXIT_FAILURE);
 }
