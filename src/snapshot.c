@@ -103,6 +103,14 @@ static SnapshotBST *SnapshotBSTCreate(char **path_list, size_t list_len) {
     return new_bst;
 }
 
+static SnapshotBST *SnapshotBSTCreateEmpty() {
+    SnapshotBST *new_bst = (SnapshotBST *)malloc(sizeof(SnapshotBST));
+    if (new_bst == NULL)
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+    new_bst->root = NULL;
+    return new_bst;
+}
+
 static void freeNode(SnapshotNode **node) {
     free((*node)->file->content);
     free((*node)->file->path);
@@ -249,14 +257,16 @@ SnapshotBST *read_index_file(size_t *total_size) {
 
     FILE *index_file = fopen(".big/index", "r");
     if (index_file == NULL) {
-        SnapshotBST *bst = (SnapshotBST *)malloc(sizeof(SnapshotBST));
-        if (bst == NULL)
-            ErrnoHandler(__func__, __FILE__, __LINE__);
-        bst->root = NULL;
+        SnapshotBST *bst = SnapshotBSTCreateEmpty();
         return bst;
     }
 
     fscanf(index_file, "%ld\n", total_size);
+
+    if (total_size == 0) {
+        SnapshotBST *bst = SnapshotBSTCreateEmpty();
+        return bst;
+    }
 
     char **path_list = (char **)malloc(sizeof(char *) * *total_size);
     if (path_list == NULL)
@@ -350,8 +360,7 @@ void add(size_t input_size, const char **root_path_list) {
         }
     }
 
-    if (bst->root != NULL)
-        save_index_file(bst, total_size);
+    save_index_file(bst, total_size);
 
     free(file_stat);
     file_stat = NULL;
