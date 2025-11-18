@@ -2,17 +2,36 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "error_handle.h"
 
 static const char dir_name[] = ".big";
 
-void init() {
-    struct stat dir_stat;
+int cheak_init() {
+    char org_dir[1024];
+    if (getcwd(org_dir, 1024) == NULL)
+        ErrnoHandler(__func__, __FILE__, __LINE__);
 
-    if (!stat(dir_name, &dir_stat)) {
-        fprintf(stderr, "Directory already initalize\nOperation cancelled\n");
+    char cwd[1024];
+
+    do {
+        getcwd(cwd, 1024);
+        if (access(".big", F_OK) != -1) {
+            chdir(org_dir);
+            return 0;
+        }
+        chdir("..");
+    } while (strncmp(cwd, "/", 2));
+
+    return -1;
+}
+
+void init() {
+    if (access(".big", F_OK) != -1) {
+        fprintf(stderr, "Error: Directory already initalize. Operation cancelled\n");
         return;
     }
 
