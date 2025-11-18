@@ -328,14 +328,14 @@ void add(size_t input_size, const char **root_path_list) {
             ErrnoHandler(__func__, __FILE__, __LINE__);
         char *relative_path = strstr(absolute_path, root_dir);
 
-        if (relative_path != NULL) {
+        if (relative_path != NULL && strcmp(relative_path, root_dir) != 0) {
             relative_path += strlen(root_dir) + 1;
             strcpy(normalized_path, relative_path);
         } else {
             strcpy(normalized_path, ".");
         }
 
-        if (strncmp(normalized_path, ".", 2))
+        if (strncmp(normalized_path, ".", 2) == 0)
             process_path(&bst, ".", &total_size);
         else {
             if (stat(normalized_path, file_stat) == -1)
