@@ -15,7 +15,7 @@ void parse(int argc, char **argv) {
     if (strncmp(argv[1], "init", 5) == 0)
         init();
     else if (strncmp(argv[1], "add", 4) == 0) {
-        if (cheak_init() == -1)
+        if (check_init() == -1)
             NotInitError();
         if (argc < 3) {
             ErrorCustomMsg(

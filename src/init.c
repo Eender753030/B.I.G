@@ -10,7 +10,7 @@
 
 static const char dir_name[] = ".big";
 
-int cheak_init() {
+int check_init() {
     char org_dir[1024];
     if (getcwd(org_dir, 1024) == NULL)
         ErrnoHandler(__func__, __FILE__, __LINE__);

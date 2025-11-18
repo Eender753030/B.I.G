@@ -1,7 +1,7 @@
 #ifndef INIT_H
 #define INIT_H
 
-int cheak_init();
+int check_init();
 
 void init();
 
