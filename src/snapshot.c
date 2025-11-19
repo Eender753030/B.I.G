@@ -155,7 +155,11 @@ static void SnapshotNodesFree(SnapshotNode *node) {
 }
 
 void SnapshotBSTDestory(SnapshotBST **bst) {
+    if (bst == NULL || *bst == NULL)
+        return;
+
     SnapshotNodesFree((*bst)->root);
+    free(*bst);
     *bst = NULL;
 }
 
@@ -251,6 +255,7 @@ SnapshotBST *read_index_file(size_t *total_size) {
 
     if (total_size == 0) {
         SnapshotBST *bst = SnapshotBSTCreateEmpty();
+        fclose(index_file);
         return bst;
     }
 
