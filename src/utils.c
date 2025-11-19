@@ -1,7 +1,10 @@
 #include "utils.h"
 
+#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "error_handle.h"
 
@@ -19,7 +22,7 @@ void cd_to_project_root(char **org_dir) {
     if (org_dir != NULL) {
         *org_dir = (char *)malloc(1024);
         if (*org_dir == NULL || getcwd(*org_dir, 1024) == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+            ErrnoHandler(__func__, __FILE__, __LINE__);
     }
 
     char current_dir[1024];
@@ -33,4 +36,20 @@ void cd_to_project_root(char **org_dir) {
         if (chdir("..") == -1)
             ErrnoHandler(__func__, __FILE__, __LINE__);
     }
+}
+
+unsigned long hash_function(char *string) {
+    unsigned long hash = 5381;
+    for (; *string != '\0'; string++) {
+        hash = ((hash << 5) + hash) + *string;
+    }
+    return hash;
+}
+
+char *hash_to_string(unsigned long hash) {
+    char *hex_str = (char *)malloc(17);
+    if (hex_str == NULL)
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+    sprintf(hex_str, "%lx", hash);
+    return hex_str;
 }
