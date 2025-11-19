@@ -11,11 +11,6 @@
 #include "error_handle.h"
 #include "utils.h"
 
-typedef struct FileInfo {
-    char *content;
-    char *path;  // Use path as search key
-} FileInfo;
-
 typedef struct SnapshotNode {
     FileInfo *file;  // TODO: If file wasn't changed. Direct point to earlier commit's FileInfo
     struct SnapshotNode *left;
@@ -352,4 +347,8 @@ void add(size_t input_size, const char **root_path_list) {
     free(file_stat);
     file_stat = NULL;
     SnapshotBSTDestory(&bst);
+}
+
+FileInfo *get_fileinfo(SnapshotNode *node) {
+    return node->file;
 }
