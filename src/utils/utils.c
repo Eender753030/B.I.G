@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "utils/utils.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "error_handle.h"
+#include "utils/error_handle.h"
 
 char *str_dup(const char *string) {
     char *new_string = (char *)malloc(strlen(string) + 1);

@@ -8,8 +8,9 @@ BIN_DIR = bin
 CFLAGS = -Wall -g -I${INC_DIR}
 
 TARGET = ${BIN_DIR}/big
-SRCS = ${wildcard ${SRC_DIR}/*.c}
-OBJS = ${patsubst ${SRC_DIR}/%.c, ${OBJ_DIR}/%.o, ${SRCS}}
+
+SRCS := ${shell find ${SRC_DIR} -name '*.c'}
+OBJS := ${SRCS:${SRC_DIR}/%.c=${OBJ_DIR}/%.o}
 
 all: ${TARGET}
 
@@ -19,7 +20,7 @@ ${TARGET}: ${OBJS}
 	@echo "Link succeeded -> $@"
 
 ${OBJ_DIR}/%.o: ${SRC_DIR}/%.c
-	@mkdir -p ${OBJ_DIR}
+	@mkdir -p ${dir $@}
 	${CC} ${CFLAGS} -c $< -o $@
 	@echo "Compile succeeded -> $@"
 
