@@ -179,27 +179,6 @@ static char *log_from_editor() {
     return log;
 }
 
-static void mk_dir_and_file(const char *path, const char *content) {
-    char *temp_path = str_dup(path);
-
-    char *slash_pos = path;
-    while ((slash_pos = strchr(slash_pos, '/')) != NULL) {
-        temp_path[slash_pos - path] = '\0';
-        if (mkdir(temp_path, 0775) == -1) {
-            if (errno != EEXIST)
-                ErrnoHandler(__func__, __FILE__, __LINE__);
-        }
-        temp_path[slash_pos - path] = '/';
-        slash_pos++;
-    }
-    FILE *target_file = fopen(path, "wb");
-
-    fwrite(content, 1, strlen(content), target_file);
-
-    fclose(target_file);
-    free(temp_path);
-}
-
 void scan_and_create_snapshot(SnapshotNode *node) {
     FileInfo *current_file = get_fileinfo(node);
     mk_dir_and_file(current_file->path, current_file->content);
