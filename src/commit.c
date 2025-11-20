@@ -207,6 +207,9 @@ static void leader_update(CommitNode *node) {
 void commit(const char *log_message) {
     cd_to_project_root(NULL);
 
+if (access(".big/index", F_OK) == -1)
+        ErrorCustomMsg("Error: Nothing to commit\n");
+
     char *log;
     if (log_message == NULL)
         log = log_from_editor();
@@ -219,7 +222,5 @@ void commit(const char *log_message) {
 
     leader_update(new_commit);
 
-    CommitNodeFree(new_commit);
-    free(new_commit);
-    new_commit = NULL;
+    remove(".big/index");
 }
