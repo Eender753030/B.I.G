@@ -9,11 +9,7 @@
 #include <unistd.h>
 
 #include "error_handle.h"
-
-typedef struct FileInfo {
-    char *content;
-    char *path;  // Use path as search key
-} FileInfo;
+#include "utils.h"
 
 typedef struct SnapshotNode {
     FileInfo *file;  // TODO: If file wasn't changed. Direct point to earlier commit's FileInfo
@@ -24,16 +20,6 @@ typedef struct SnapshotNode {
 struct SnapshotBST {
     SnapshotNode *root;
 };
-
-static char *str_dup(const char *string) {
-    char *new_string = (char *)malloc(strlen(string) + 1);
-    if (new_string == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-
-    strcpy(new_string, string);
-
-    return new_string;
-}
 
 static char *read_whole_file(const char *full_path) {
     FILE *file = fopen(full_path, "rb");
@@ -164,11 +150,15 @@ static void SnapshotNodesFree(SnapshotNode *node) {
 }
 
 void SnapshotBSTDestory(SnapshotBST **bst) {
+    if (bst == NULL || *bst == NULL)
+        return;
+
     SnapshotNodesFree((*bst)->root);
+    free(*bst);
     *bst = NULL;
 }
 
-static void process_path(SnapshotBST **bst, const char *root_path, size_t *list_length) {
+void process_path(SnapshotBST **bst, const char *root_path, size_t *list_length) {
     DIR *dir = opendir(root_path);
     if (dir == NULL)
         ErrnoHandler(__func__, __FILE__, __LINE__);
@@ -208,20 +198,30 @@ static void process_path(SnapshotBST **bst, const char *root_path, size_t *list_
     dir = NULL;
 }
 
-static void BST_inorder_traversal(char ***list, SnapshotNode *node, size_t *idx) {
+static void inorder_traversal_to_path_list(char ***list, SnapshotNode *node, size_t *idx) {
     if (node == NULL)
         return;
 
-    BST_inorder_traversal(list, node->left, idx);
+    inorder_traversal_to_path_list(list, node->left, idx);
     (*list)[*idx] = node->file->path;
     (*idx)++;
-    BST_inorder_traversal(list, node->right, idx);
+    inorder_traversal_to_path_list(list, node->right, idx);
+}
+
+static void _inorder_traversal_func_recu(SnapshotNode *node, void (*action)(SnapshotNode *)) {
+    if (node == NULL)
+        return;
+    _inorder_traversal_func_recu(node->left, action);
+    action(node);
+    _inorder_traversal_func_recu(node->right, action);
+}
+
+void inorder_traversal_func(SnapshotBST *bst, void (*action)(SnapshotNode *)) {
+    _inorder_traversal_func_recu(bst->root, action);
 }
 
 static void save_index_file(SnapshotBST *bst, size_t total_size) {
-    while (access(".big", F_OK) == -1) {
-        chdir("..");
-    }
+    cd_to_project_root(NULL);
 
     FILE *index_file = fopen(".big/index", "w");
     if (index_file == NULL)
@@ -232,14 +232,13 @@ static void save_index_file(SnapshotBST *bst, size_t total_size) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
 
     size_t idx = 0;
-    BST_inorder_traversal(&path_list, bst->root, &idx);
+    inorder_traversal_to_path_list(&path_list, bst->root, &idx);
 
     if (idx != total_size)
         ErrorCustomMsg("Error: save index file failed: path list size not match\n");
 
     fprintf(index_file, "%ld\n", idx);
-    for (size_t i = 0; i < idx; i++)
-        fprintf(index_file, "%s\n", path_list[i]);
+    for (size_t i = 0; i < idx; i++) fprintf(index_file, "%s\n", path_list[i]);
 
     fclose(index_file);
     free(path_list);
@@ -251,9 +250,7 @@ SnapshotBST *read_index_file(size_t *total_size) {
     if (getcwd(org_dir, sizeof(org_dir)) == NULL)
         ErrnoHandler(__func__, __FILE__, __LINE__);
 
-    while (access(".big", F_OK) == -1) {
-        chdir("..");
-    }
+    cd_to_project_root(NULL);
 
     FILE *index_file = fopen(".big/index", "r");
     if (index_file == NULL) {
@@ -265,6 +262,7 @@ SnapshotBST *read_index_file(size_t *total_size) {
 
     if (total_size == 0) {
         SnapshotBST *bst = SnapshotBSTCreateEmpty();
+        fclose(index_file);
         return bst;
     }
 
@@ -298,10 +296,6 @@ SnapshotBST *read_index_file(size_t *total_size) {
 }
 
 void add(size_t input_size, const char **root_path_list) {
-    char org_dir[1024];
-    if (getcwd(org_dir, 1024) == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-
     for (size_t i = 0; i < input_size; i++) {
         if (access(root_path_list[i], F_OK) == -1) {
             ErrorCustomMsg("Error: '%s' did not match to any file or directory.\n",
@@ -311,9 +305,8 @@ void add(size_t input_size, const char **root_path_list) {
             ErrorCustomMsg("Error: '..' is outside project directory.\n");
     }
 
-    while (access(".big", F_OK) == -1) {
-        chdir("..");
-    }
+    char *org_dir;
+    cd_to_project_root(&org_dir);
 
     char root_dir[1024];
     if (getcwd(root_dir, 1024) == NULL)
@@ -362,7 +355,12 @@ void add(size_t input_size, const char **root_path_list) {
 
     save_index_file(bst, total_size);
 
+    free(org_dir);
     free(file_stat);
     file_stat = NULL;
     SnapshotBSTDestory(&bst);
+}
+
+FileInfo *get_fileinfo(SnapshotNode *node) {
+    return node->file;
 }
