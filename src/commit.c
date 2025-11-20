@@ -45,8 +45,53 @@ static CommitNode *CommitNodeCreate(const char *log) {
 
     new_node->log = str_dup(log);
     new_node->datetime = str_dup(buffer);
-    new_node->parent = NULL;
-    new_node->snapshot = read_index_file(&size);
+        new_node->snapshot = read_index_file(&size);
+
+    if (access(".big/Leader", F_OK) == 0) {
+        new_node->parent = (CommitNode **)malloc(sizeof(CommitNode *));
+        new_node->parent[0] = (CommitNode *)malloc(sizeof(CommitNode));
+        if (new_node->parent == NULL || new_node->parent[0] == NULL)
+            ErrnoHandler(__func__, __FILE__, __LINE__);
+        new_node->parent_num = 1;
+
+        FILE *leader = fopen(".big/Leader", "r");
+        if (leader == NULL)
+            ErrnoHandler(__func__, __FILE__, __LINE__);
+
+        fseek(leader, 0, SEEK_END);
+        size_t parent_id_length = ftell(leader);
+        if (parent_id_length == 0) {
+            new_node->parent[0] = NULL;
+            fclose(leader);
+        } else {
+            fseek(leader, 0, SEEK_SET);
+            char *parent_dir = (char *)malloc(parent_id_length + 1);
+            if (parent_dir == NULL)
+                ErrnoHandler(__func__, __FILE__, __LINE__);
+            fgets(parent_dir, parent_id_length, leader);
+            parent_dir[parent_id_length] = '\0';
+            new_node->parent[0]->commit_id = str_dup(parent_dir);
+            fclose(leader);
+            if (chdir(objects_dir) == -1 || chdir(parent_dir) == -1)
+                ErrnoHandler(__func__, __FILE__, __LINE__);
+
+            free(parent_dir);
+            char buffer[1024];
+            FILE *parent_info = fopen("info", "r");
+            if (parent_info == NULL)
+                ErrnoHandler(__func__, __FILE__, __LINE__);
+            fgets(buffer, 1024, parent_info);
+            new_node->parent[0]->log = str_dup(buffer);
+            fgets(buffer, 1024, parent_info);
+            new_node->parent[0]->datetime = str_dup(buffer);
+            fclose(parent_info);
+            cd_to_project_root(NULL);
+        }
+
+    } else {
+        new_node->parent = NULL;
+        new_node->parent_num = 0;
+    }
 
     return new_node;
 }
