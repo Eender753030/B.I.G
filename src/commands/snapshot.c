@@ -1,4 +1,4 @@
-#include "snapshot.h"
+#include "commands/snapshot.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -8,8 +8,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "error_handle.h"
-#include "utils.h"
+#include "utils/error_handle.h"
+#include "utils/utils.h"
 
 typedef struct SnapshotNode {
     FileInfo *file;  // TODO: If file wasn't changed. Direct point to earlier commit's FileInfo

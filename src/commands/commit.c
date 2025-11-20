@@ -1,4 +1,4 @@
-#include "commit.h"
+#include "commands/commit.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -10,9 +10,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "error_handle.h"
-#include "snapshot.h"
-#include "utils.h"
+#include "commands/snapshot.h"
+#include "utils/error_handle.h"
+#include "utils/utils.h"
 
 typedef struct CommitNode {
     SnapshotBST *snapshot;

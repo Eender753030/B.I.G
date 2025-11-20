@@ -1,4 +1,4 @@
-#include "init.h"
+#include "commands/init.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "error_handle.h"
+#include "utils/error_handle.h"
 
 static const char dir_name[] = ".big";
 

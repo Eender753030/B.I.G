@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "commit.h"
-#include "error_handle.h"
-#include "init.h"
-#include "snapshot.h"
+#include "commands/commit.h"
+#include "commands/init.h"
+#include "commands/snapshot.h"
+#include "utils/error_handle.h"
 
 void parse(int argc, char **argv) {
     if (argc < 2)
@@ -15,6 +15,7 @@ void parse(int argc, char **argv) {
 
     if (strncmp(argv[1], "init", 5) == 0)
         init();
+
     else if (strncmp(argv[1], "add", 4) == 0) {
         if (check_init() == -1)
             NotInitError();
@@ -24,6 +25,7 @@ void parse(int argc, char **argv) {
                 "Use 'big add .' in root of project directory to add whole\n");
         }
         add((size_t)argc - 2, (const char **)argv + 2);
+
     } else if (strncmp(argv[1], "commit", 7) == 0) {
         if (check_init() == -1)
             NotInitError();
@@ -35,6 +37,9 @@ void parse(int argc, char **argv) {
             else
                 ErrorCustomMsg("Usage: big commit [-m \"<log message>\"]\n");
         }
+
+    } else if (strncmp(argv[1], "log", 4) == 0) {
+        // TODO: log operation
     } else
         InputError();
 }
