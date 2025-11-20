@@ -159,7 +159,7 @@ static char *log_from_editor() {
     if (pid == -1)
         ErrorCustomMsg("Error: can not create child process\n");
     else if (pid == 0) {
-        char *argv[] = {"nano", temp_log_filename, NULL};
+        char *argv[] = {"nano", (char *)temp_log_filename, NULL};
         FILE *temp_log_file = fopen(temp_log_filename, "wb");
         fputs("// Write down your commit log below this line\n", temp_log_file);
         fclose(temp_log_file);
