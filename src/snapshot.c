@@ -209,16 +209,16 @@ static void inorder_traversal_to_path_list(char ***list, SnapshotNode *node, siz
     inorder_traversal_to_path_list(list, node->right, idx);
 }
 
-static void _inorder_traversal_commit_recu(SnapshotNode *node) {
+static void _inorder_traversal_func_recu(SnapshotNode *node, void (*action)(SnapshotNode *)) {
     if (node == NULL)
         return;
-    _inorder_traversal_commit_recu(node->left);
-    scan_and_create_snapshot(node);
-    _inorder_traversal_commit_recu(node->right);
+    _inorder_traversal_func_recu(node->left, action);
+    action(node);
+    _inorder_traversal_func_recu(node->right, action);
 }
 
-void inorder_traversal_commit(SnapshotBST *bst) {
-    _inorder_traversal_commit_recu(bst->root);
+void inorder_traversal_func(SnapshotBST *bst, void (*action)(SnapshotNode *)) {
+    _inorder_traversal_func_recu(bst->root, action);
 }
 
 static void save_index_file(SnapshotBST *bst, size_t total_size) {

@@ -179,7 +179,7 @@ static char *log_from_editor() {
     return log;
 }
 
-void scan_and_create_snapshot(SnapshotNode *node) {
+static void scan_and_create_snapshot(SnapshotNode *node) {
     FileInfo *current_file = get_fileinfo(node);
     mk_dir_and_file(current_file->path, current_file->content);
 }
@@ -229,7 +229,7 @@ static void save_object_file(CommitNode *node) {
     if (chdir("root") == -1)
         ErrnoHandler(__func__, __FILE__, __LINE__);
 
-    inorder_traversal_commit(node->snapshot);
+    inorder_traversal_func(node->snapshot, scan_and_create_snapshot);
 
     free(object_dir);
     cd_to_project_root(NULL);

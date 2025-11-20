@@ -19,7 +19,7 @@ SnapshotBST *read_index_file(size_t *total_size);
 
 void add(const size_t input_size, const char **path_list);
 
-void inorder_traversal_commit(SnapshotBST *bst);
+void inorder_traversal_func(SnapshotBST *bst, void (*action)(SnapshotNode *));
 
 FileInfo *get_fileinfo(SnapshotNode *node);
 
