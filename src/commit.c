@@ -67,9 +67,8 @@ static CommitNode *load_parent_info(char *commit_id) {
     char buffer[128] = {0};
 
     fgets(buffer, 128, parent_info);
-    buffer[ftell(parent_info) - 1] = '\0';
+    buffer[strcspn(buffer, "\n")] = '\0';
     parent_node->datetime = str_dup(buffer);
-
     fgets(buffer, 128, parent_info);
 
     size_t current_pos = ftell(parent_info);
