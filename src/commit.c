@@ -23,10 +23,6 @@ typedef struct CommitNode {
     char *commit_id;
 } CommitNode;
 
-struct CommitGraph {
-    CommitNode *nodes;
-};
-
 static const char temp_log_filename[] = ".big/temp_log.txt";
 static const char objects_dir[] = ".big/objects";
 
@@ -115,10 +111,6 @@ static void CommitNodeFree(CommitNode **node) {
     (*node)->parent = NULL;
     free((*node));
     (*node) = NULL;
-}
-
-static void CommitGraphDestory(CommitGraph **graph) {
-    // TODO: Free all Graph. Use with CommitNodeFree
 }
 
 static char *log_file_handle() {

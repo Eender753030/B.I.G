@@ -3,7 +3,7 @@
 
 #include "snapshot.h"
 
-typedef struct CommitGraph CommitGraph;
+typedef struct CommitNode CommitNode;
 
 void commit(const char *log_message);
 
