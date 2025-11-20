@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "utils/error_handle.h"
+#include "utils/file_handle.h"
 #include "utils/utils.h"
 
 typedef struct SnapshotNode {
@@ -20,31 +21,6 @@ typedef struct SnapshotNode {
 struct SnapshotBST {
     SnapshotNode *root;
 };
-
-static char *read_whole_file(const char *full_path) {
-    FILE *file = fopen(full_path, "rb");
-    if (file == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-
-    fseek(file, 0, SEEK_END);
-    size_t file_len = ftell(file);
-
-    char *buffer = (char *)malloc(file_len + 1);
-    if (buffer == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-
-    rewind(file);
-
-    size_t bytes_read = fread(buffer, 1, file_len, file);
-    if (bytes_read != file_len)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-
-    buffer[file_len] = '\0';
-
-    fclose(file);
-
-    return buffer;
-}
 
 static SnapshotNode *SnapshotNodeCreate(const char *path) {
     SnapshotNode *new_node = (SnapshotNode *)malloc(sizeof(SnapshotNode));
