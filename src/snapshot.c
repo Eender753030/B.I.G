@@ -8,7 +8,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "commit.h"
 #include "error_handle.h"
 #include "utils.h"
 
