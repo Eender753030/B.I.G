@@ -6,7 +6,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char usage_hint[] = "Usage: big <command>";
+static const char usage_hint[] =
+    "\nUsage: big <command> [<args>]\n\n"
+    "Commands:\n"
+    "\tbig init                             Initalize current directory to project root\n"
+    "\tbig add <file or direcotry> <...>    Add files into index to wait for commit\n"
+    "\tbig commit [-m] [<\"message\">]      Commit and enter log\n\n";
 
 void ErrnoHandler(const char *func_name, const char *file_name, const int line) {
     fprintf(stderr, "Error in function '%s' at line %d of %s: %s\n", func_name, line, file_name,
