@@ -58,7 +58,7 @@ static CommitNode *load_parent_info(char *commit_id) {
     parent_node->commit_id = commit_id;
 
     char parent_dir[1024];
-    sprintf(parent_dir, "%s/%s/%s", objects_dir, commit_id, "info");
+    snprintf(parent_dir, sizeof(parent_dir), "%s/%s/%s", objects_dir, commit_id, "info");
 
     FILE *parent_info = fopen(parent_dir, "r");
     if (parent_info == NULL)
