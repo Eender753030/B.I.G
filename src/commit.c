@@ -198,8 +198,10 @@ static void save_object_file(CommitNode *node) {
     cd_to_project_root(NULL);
 }
 
-static void leader_update(CommitNode **graph) {
-    // TODO: Update Leader file for new commit
+static void leader_update(CommitNode *node) {
+    FILE *leader_file = fopen(".big/Leader", "w");
+    fprintf(leader_file, "%s\n", node->commit_id);
+    fclose(leader_file);
 }
 
 void commit(const char *log_message) {
