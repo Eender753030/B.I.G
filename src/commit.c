@@ -13,11 +13,14 @@
 #include "error_handle.h"
 #include "snapshot.h"
 #include "utils.h"
+
 typedef struct CommitNode {
     SnapshotBST *snapshot;
     char *log;
     char *datetime;
     struct CommitNode **parent;
+    size_t parent_num;
+    char *commit_id;
 } CommitNode;
 
 struct CommitGraph {
@@ -118,6 +121,32 @@ static char *log_from_editor() {
     return log;
 }
 
+static void mk_dir_and_file(const char *path, const char *content) {
+    char *temp_path = str_dup(path);
+
+    char *slash_pos = path;
+    while ((slash_pos = strchr(slash_pos, '/')) != NULL) {
+        temp_path[slash_pos - path] = '\0';
+        if (mkdir(temp_path, 0775) == -1) {
+            if (errno != EEXIST)
+                ErrnoHandler(__func__, __FILE__, __LINE__);
+        }
+        temp_path[slash_pos - path] = '/';
+        slash_pos++;
+    }
+    FILE *target_file = fopen(path, "wb");
+
+    fwrite(content, 1, strlen(content), target_file);
+
+    fclose(target_file);
+    free(temp_path);
+}
+
+void scan_and_create_snapshot(SnapshotNode *node) {
+    FileInfo *current_file = get_fileinfo(node);
+    mk_dir_and_file(current_file->path, current_file->content);
+}
+
 static void save_object_file(CommitNode *node) {
     if (access(objects_dir, F_OK) == -1) {
         if (mkdir(objects_dir, 0775) == -1)
@@ -136,14 +165,34 @@ static void save_object_file(CommitNode *node) {
     char *object_dir = hash_to_string(hash_function(pre_hash_string));
     free(pre_hash_string);
 
-    if (access(object_dir, F_OK) == 0) {
-        // TODO: Detect collision and solve it
+    while (access(object_dir, F_OK) == 0) {
+        free(object_dir);
+        object_dir = hash_to_string(hash_function(object_dir));
     }
 
-    if (mkdir(object_dir, 0775) == -1)
+    node->commit_id = str_dup(object_dir);
+
+    if (mkdir(object_dir, 0775) == -1 || chdir(object_dir) == -1 || mkdir("root", 0775))
         ErrnoHandler(__func__, __FILE__, __LINE__);
 
-    // TODO: Save all content of CommitNode
+    FILE *info_file = fopen("info", "w");
+    if (info_file == NULL)
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+
+    fprintf(info_file, "%s\n%s\n", node->log, node->datetime);
+    if (node->parent != NULL) {
+        fprintf(info_file, "%ld", node->parent_num);
+        for (size_t i = 0; i < node->parent_num; i++) {
+            fprintf(info_file, ", %s", node->parent[i]->commit_id);
+        }
+        fputc('\n', info_file);
+    }
+    fclose(info_file);
+
+    if (chdir("root") == -1)
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+
+    inorder_traversal_commit(node->snapshot);
 
     free(object_dir);
     cd_to_project_root(NULL);

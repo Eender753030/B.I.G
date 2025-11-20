@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "commit.h"
 #include "error_handle.h"
 #include "utils.h"
 
@@ -158,7 +159,7 @@ void SnapshotBSTDestory(SnapshotBST **bst) {
     *bst = NULL;
 }
 
-static void process_path(SnapshotBST **bst, const char *root_path, size_t *list_length) {
+void process_path(SnapshotBST **bst, const char *root_path, size_t *list_length) {
     DIR *dir = opendir(root_path);
     if (dir == NULL)
         ErrnoHandler(__func__, __FILE__, __LINE__);
@@ -198,14 +199,26 @@ static void process_path(SnapshotBST **bst, const char *root_path, size_t *list_
     dir = NULL;
 }
 
-static void BST_inorder_traversal(char ***list, SnapshotNode *node, size_t *idx) {
+static void inorder_traversal_to_path_list(char ***list, SnapshotNode *node, size_t *idx) {
     if (node == NULL)
         return;
 
-    BST_inorder_traversal(list, node->left, idx);
+    inorder_traversal_to_path_list(list, node->left, idx);
     (*list)[*idx] = node->file->path;
     (*idx)++;
-    BST_inorder_traversal(list, node->right, idx);
+    inorder_traversal_to_path_list(list, node->right, idx);
+}
+
+static void _inorder_traversal_commit_recu(SnapshotNode *node) {
+    if (node == NULL)
+        return;
+    _inorder_traversal_commit_recu(node->left);
+    scan_and_create_snapshot(node);
+    _inorder_traversal_commit_recu(node->right);
+}
+
+void inorder_traversal_commit(SnapshotBST *bst) {
+    _inorder_traversal_commit_recu(bst->root);
 }
 
 static void save_index_file(SnapshotBST *bst, size_t total_size) {
@@ -220,7 +233,7 @@ static void save_index_file(SnapshotBST *bst, size_t total_size) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
 
     size_t idx = 0;
-    BST_inorder_traversal(&path_list, bst->root, &idx);
+    inorder_traversal_to_path_list(&path_list, bst->root, &idx);
 
     if (idx != total_size)
         ErrorCustomMsg("Error: save index file failed: path list size not match\n");
