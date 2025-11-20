@@ -45,7 +45,7 @@ static CommitNode *CommitNodeCreate(const char *log) {
 
     new_node->log = str_dup(log);
     new_node->datetime = str_dup(buffer);
-        new_node->snapshot = read_index_file(&size);
+    new_node->snapshot = read_index_file(&size);
 
     if (access(".big/Leader", F_OK) == 0) {
         new_node->parent = (CommitNode **)malloc(sizeof(CommitNode *));
@@ -96,12 +96,25 @@ static CommitNode *CommitNodeCreate(const char *log) {
     return new_node;
 }
 
-static void CommitNodeFree(CommitNode *node) {
-    free(node->log);
-    node->log = NULL;
-    free(node->datetime);
-    node->datetime = NULL;
-    SnapshotBSTDestory(&(node->snapshot));
+static void CommitNodeFree(CommitNode **node) {
+    free((*node)->log);
+    (*node)->log = NULL;
+    free((*node)->datetime);
+    (*node)->datetime = NULL;
+    free((*node)->commit_id);
+    (*node)->commit_id = NULL;
+    SnapshotBSTDestory(&((*node)->snapshot));
+    for (size_t i = 0; i < (*node)->parent_num; i++) {
+        free((*node)->parent[i]->log);
+        free((*node)->parent[i]->datetime);
+        free((*node)->parent[i]->commit_id);
+        free((*node)->parent[i]);
+        (*node)->parent[i] = NULL;
+    }
+    free((*node)->parent);
+    (*node)->parent = NULL;
+    free((*node));
+    (*node) = NULL;
 }
 
 static void CommitGraphDestory(CommitGraph **graph) {
@@ -252,7 +265,7 @@ static void leader_update(CommitNode *node) {
 void commit(const char *log_message) {
     cd_to_project_root(NULL);
 
-if (access(".big/index", F_OK) == -1)
+    if (access(".big/index", F_OK) == -1)
         ErrorCustomMsg("Error: Nothing to commit\n");
 
     char *log;
@@ -262,10 +275,13 @@ if (access(".big/index", F_OK) == -1)
         log = str_dup(log_message);
 
     CommitNode *new_commit = CommitNodeCreate(log);
+    free(log);
+    log = NULL;
 
     save_object_file(new_commit);
 
     leader_update(new_commit);
 
     remove(".big/index");
+    CommitNodeFree(&new_commit);
 }
