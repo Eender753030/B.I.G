@@ -26,6 +26,69 @@ typedef struct CommitNode {
 static const char temp_log_filename[] = ".big/temp_log.txt";
 static const char objects_dir[] = ".big/objects";
 
+static char *load_leader() {
+    FILE *leader = fopen(".big/Leader", "r");
+    if (leader == NULL)
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+
+    fseek(leader, 0, SEEK_END);
+    size_t leader_id_length = ftell(leader);
+    if (leader_id_length == 0) {
+        fclose(leader);
+        return NULL;
+    }
+    fseek(leader, 0, SEEK_SET);
+    char *leader_id = (char *)malloc(leader_id_length + 1);
+    if (leader_id == NULL)
+
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+
+    fgets(leader_id, leader_id_length, leader);
+    leader_id[leader_id_length] = '\0';
+
+    fclose(leader);
+    return leader_id;
+}
+
+static CommitNode *load_parent_info(char *commit_id) {
+    CommitNode *parent_node = (CommitNode *)malloc(sizeof(CommitNode));
+    if (parent_node == NULL)
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+
+    parent_node->commit_id = commit_id;
+
+    char parent_dir[1024];
+    sprintf(parent_dir, "%s/%s/%s", objects_dir, commit_id, "info");
+
+    FILE *parent_info = fopen(parent_dir, "r");
+    if (parent_info == NULL)
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+
+    char buffer[128] = {0};
+
+    fgets(buffer, 128, parent_info);
+    buffer[ftell(parent_info) - 1] = '\0';
+    parent_node->datetime = str_dup(buffer);
+
+    fgets(buffer, 128, parent_info);
+
+    size_t current_pos = ftell(parent_info);
+    fseek(parent_info, 0, SEEK_END);
+    size_t log_length = ftell(parent_info) - current_pos;
+    parent_node->log = (char *)malloc(log_length + 1);
+    fseek(parent_info, current_pos, SEEK_SET);
+    fread(parent_node->log, 1, log_length, parent_info);
+    parent_node->log[log_length] = '\0';
+
+    parent_node->snapshot = NULL;
+    parent_node->parent = NULL;
+    parent_node->parent_num = 0;
+
+    fclose(parent_info);
+
+    return parent_node;
+}
+
 static CommitNode *CommitNodeCreate(const char *log) {
     CommitNode *new_node = (CommitNode *)malloc(sizeof(CommitNode));
     if (new_node == NULL)
@@ -45,45 +108,15 @@ static CommitNode *CommitNodeCreate(const char *log) {
 
     if (access(".big/Leader", F_OK) == 0) {
         new_node->parent = (CommitNode **)malloc(sizeof(CommitNode *));
-        new_node->parent[0] = (CommitNode *)malloc(sizeof(CommitNode));
-        if (new_node->parent == NULL || new_node->parent[0] == NULL)
+        if (new_node->parent == NULL)
             ErrnoHandler(__func__, __FILE__, __LINE__);
         new_node->parent_num = 1;
-
-        FILE *leader = fopen(".big/Leader", "r");
-        if (leader == NULL)
-            ErrnoHandler(__func__, __FILE__, __LINE__);
-
-        fseek(leader, 0, SEEK_END);
-        size_t parent_id_length = ftell(leader);
-        if (parent_id_length == 0) {
-            new_node->parent[0] = NULL;
-            fclose(leader);
-        } else {
-            fseek(leader, 0, SEEK_SET);
-            char *parent_dir = (char *)malloc(parent_id_length + 1);
-            if (parent_dir == NULL)
-                ErrnoHandler(__func__, __FILE__, __LINE__);
-            fgets(parent_dir, parent_id_length, leader);
-            parent_dir[parent_id_length] = '\0';
-            new_node->parent[0]->commit_id = str_dup(parent_dir);
-            fclose(leader);
-            if (chdir(objects_dir) == -1 || chdir(parent_dir) == -1)
-                ErrnoHandler(__func__, __FILE__, __LINE__);
-
-            free(parent_dir);
-            char buffer[1024];
-            FILE *parent_info = fopen("info", "r");
-            if (parent_info == NULL)
-                ErrnoHandler(__func__, __FILE__, __LINE__);
-            fgets(buffer, 1024, parent_info);
-            new_node->parent[0]->log = str_dup(buffer);
-            fgets(buffer, 1024, parent_info);
-            new_node->parent[0]->datetime = str_dup(buffer);
-            fclose(parent_info);
-            cd_to_project_root(NULL);
+        new_node->parent[0] = load_parent_info(load_leader());
+        if (new_node->parent[0] == NULL) {
+            free(new_node->parent);
+            new_node->parent = NULL;
+            new_node->parent_num = 0;
         }
-
     } else {
         new_node->parent = NULL;
         new_node->parent_num = 0;
@@ -101,11 +134,7 @@ static void CommitNodeFree(CommitNode **node) {
     (*node)->commit_id = NULL;
     SnapshotBSTDestory(&((*node)->snapshot));
     for (size_t i = 0; i < (*node)->parent_num; i++) {
-        free((*node)->parent[i]->log);
-        free((*node)->parent[i]->datetime);
-        free((*node)->parent[i]->commit_id);
-        free((*node)->parent[i]);
-        (*node)->parent[i] = NULL;
+        CommitNodeFree(&((*node)->parent[i]));
     }
     free((*node)->parent);
     (*node)->parent = NULL;
@@ -208,14 +237,15 @@ static void save_object_file(CommitNode *node) {
     if (info_file == NULL)
         ErrnoHandler(__func__, __FILE__, __LINE__);
 
-    fprintf(info_file, "%s\n%s\n", node->log, node->datetime);
+    fprintf(info_file, "%s\n", node->datetime);
     if (node->parent != NULL) {
         fprintf(info_file, "%ld", node->parent_num);
         for (size_t i = 0; i < node->parent_num; i++) {
             fprintf(info_file, ", %s", node->parent[i]->commit_id);
         }
-        fputc('\n', info_file);
     }
+    fputc('\n', info_file);
+    fprintf(info_file, "%s\n", node->log);
     fclose(info_file);
 
     if (chdir("root") == -1)
