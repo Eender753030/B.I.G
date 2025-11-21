@@ -1,4 +1,4 @@
-#include "commands/commit.h"
+#include "core/commit_graph.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -10,8 +10,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "commands/snapshot.h"
+#include "core/snapshot.h"
 #include "utils/error_handle.h"
+#include "utils/file_handle.h"
 #include "utils/utils.h"
 
 typedef struct CommitNode {
@@ -88,7 +89,7 @@ static CommitNode *load_parent_info(char *commit_id) {
     return parent_node;
 }
 
-static CommitNode *CommitNodeCreate(const char *log) {
+CommitNode *CommitNodeCreate(char *log) {
     CommitNode *new_node = (CommitNode *)malloc(sizeof(CommitNode));
     if (new_node == NULL)
         ErrnoHandler(__func__, __FILE__, __LINE__);
@@ -101,7 +102,7 @@ static CommitNode *CommitNodeCreate(const char *log) {
     datetime_now = localtime(&time_now);
     strftime(buffer, 100, "%Y/%m/%d %H:%M:%S", datetime_now);
 
-    new_node->log = str_dup(log);
+    new_node->log = log;
     new_node->datetime = str_dup(buffer);
     new_node->snapshot = read_index_file(&size);
 
@@ -124,7 +125,7 @@ static CommitNode *CommitNodeCreate(const char *log) {
     return new_node;
 }
 
-static void CommitNodeFree(CommitNode **node) {
+void CommitNodeFree(CommitNode **node) {
     free((*node)->log);
     (*node)->log = NULL;
     free((*node)->datetime);
@@ -199,12 +200,18 @@ static char *log_from_editor() {
     return log;
 }
 
+char *commit_log_insert(char *log_message) {
+    if (log_message == NULL)
+        return log_from_editor();
+    return str_dup(log_message);
+}
+
 static void scan_and_create_snapshot(SnapshotNode *node) {
     FileInfo *current_file = get_fileinfo(node);
     mk_dir_and_file(current_file->path, current_file->content);
 }
 
-static void save_object_file(CommitNode *node) {
+void save_object_file(CommitNode *node) {
     if (access(objects_dir, F_OK) == -1) {
         if (mkdir(objects_dir, 0775) == -1)
             ErrnoHandler(__func__, __FILE__, __LINE__);
@@ -256,32 +263,8 @@ static void save_object_file(CommitNode *node) {
     cd_to_project_root(NULL);
 }
 
-static void leader_update(CommitNode *node) {
+void leader_update(CommitNode *node) {
     FILE *leader_file = fopen(".big/Leader", "w");
     fprintf(leader_file, "%s\n", node->commit_id);
     fclose(leader_file);
-}
-
-void commit(const char *log_message) {
-    cd_to_project_root(NULL);
-
-    if (access(".big/index", F_OK) == -1)
-        ErrorCustomMsg("Error: Nothing to commit\n");
-
-    char *log;
-    if (log_message == NULL)
-        log = log_from_editor();
-    else
-        log = str_dup(log_message);
-
-    CommitNode *new_commit = CommitNodeCreate(log);
-    free(log);
-    log = NULL;
-
-    save_object_file(new_commit);
-
-    leader_update(new_commit);
-
-    remove(".big/index");
-    CommitNodeFree(&new_commit);
 }

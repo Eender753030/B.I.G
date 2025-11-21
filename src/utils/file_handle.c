@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "utils/error_handle.h"
 #include "utils/utils.h"
@@ -54,4 +55,28 @@ void mk_dir_and_file(const char *path, const char *content) {
 
     fclose(target_file);
     free(temp_path);
+}
+
+char *relative_path_calc(const char *org_dir, const char *root_path) {
+    char *normalized_path;
+    char temp_path[4096];
+    char root_dir[4096];
+    if (getcwd(root_dir, 4096) == NULL)
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+
+    snprintf(temp_path, sizeof(temp_path), "%s/%s", org_dir, root_path);
+
+    char absolute_path[4096];
+    if (realpath(temp_path, absolute_path) == NULL)
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+    char *relative_path = strstr(absolute_path, root_dir);
+
+    if (relative_path != NULL && strcmp(relative_path, root_dir) != 0) {
+        relative_path += strlen(root_dir) + 1;
+        normalized_path = str_dup(relative_path);
+    } else {
+        normalized_path = str_dup(".");
+    }
+
+    return normalized_path;
 }

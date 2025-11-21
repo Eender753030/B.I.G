@@ -19,6 +19,25 @@ char *str_dup(const char *string) {
     return new_string;
 }
 
+int check_init() {
+    char org_dir[1024];
+    if (getcwd(org_dir, 1024) == NULL)
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+
+    char cwd[1024];
+
+    do {
+        getcwd(cwd, 1024);
+        if (access(".big", F_OK) != -1) {
+            chdir(org_dir);
+            return 0;
+        }
+        chdir("..");
+    } while (strncmp(cwd, "/", 2));
+
+    return -1;
+}
+
 void cd_to_project_root(char **org_dir) {
     if (org_dir != NULL) {
         *org_dir = (char *)malloc(1024);
