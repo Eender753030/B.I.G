@@ -38,6 +38,8 @@ int main(int argc, char **argv) {
         }
 
     } else if (strncmp(argv[1], "log", 4) == 0) {
+        if (check_init() == -1)
+            NotInitError();
         if (argc == 2)
             cmd_log(NULL);
         else {
