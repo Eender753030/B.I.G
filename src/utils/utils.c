@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "utils/utils.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "error_handle.h"
+#include "utils/error_handle.h"
 
 char *str_dup(const char *string) {
     char *new_string = (char *)malloc(strlen(string) + 1);
@@ -17,6 +17,25 @@ char *str_dup(const char *string) {
     strcpy(new_string, string);
 
     return new_string;
+}
+
+int check_init() {
+    char org_dir[1024];
+    if (getcwd(org_dir, 1024) == NULL)
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+
+    char cwd[1024];
+
+    do {
+        getcwd(cwd, 1024);
+        if (access(".big", F_OK) != -1) {
+            chdir(org_dir);
+            return 0;
+        }
+        chdir("..");
+    } while (strncmp(cwd, "/", 2));
+
+    return -1;
 }
 
 void cd_to_project_root(char **org_dir) {
@@ -53,26 +72,4 @@ char *hash_to_string(unsigned long hash) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
     sprintf(hex_str, "%lx", hash);
     return hex_str;
-}
-
-void mk_dir_and_file(const char *path, const char *content) {
-    char *temp_path = str_dup(path);
-
-    char *slash_pos = temp_path;
-    while ((slash_pos = strchr(slash_pos + 1, '/')) != NULL) {
-        *slash_pos = '\0';
-        if (mkdir(temp_path, 0775) == -1) {
-            if (errno != EEXIST)
-                ErrnoHandler(__func__, __FILE__, __LINE__);
-        }
-        *slash_pos = '/';
-    }
-    FILE *target_file = fopen(path, "wb");
-    if (target_file == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-
-    fwrite(content, 1, strlen(content), target_file);
-
-    fclose(target_file);
-    free(temp_path);
 }

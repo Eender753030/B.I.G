@@ -1,4 +1,4 @@
-#include "commit.h"
+#include "core/commit_graph.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -10,26 +10,18 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "error_handle.h"
-#include "snapshot.h"
-#include "utils.h"
-
-typedef struct CommitNode {
-    SnapshotBST *snapshot;
-    char *log;
-    char *datetime;
-    struct CommitNode **parent;
-    size_t parent_num;
-    char *commit_id;
-} CommitNode;
+#include "core/snapshot.h"
+#include "utils/error_handle.h"
+#include "utils/file_handle.h"
+#include "utils/utils.h"
 
 static const char temp_log_filename[] = ".big/temp_log.txt";
 static const char objects_dir[] = ".big/objects";
 
-static char *load_leader() {
+char *load_leader() {
     FILE *leader = fopen(".big/Leader", "r");
     if (leader == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+        return NULL;
 
     fseek(leader, 0, SEEK_END);
     size_t leader_id_length = ftell(leader);
@@ -40,8 +32,7 @@ static char *load_leader() {
     fseek(leader, 0, SEEK_SET);
     char *leader_id = (char *)malloc(leader_id_length + 1);
     if (leader_id == NULL)
-
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+        return NULL;
 
     fgets(leader_id, leader_id_length, leader);
     leader_id[leader_id_length] = '\0';
@@ -50,7 +41,7 @@ static char *load_leader() {
     return leader_id;
 }
 
-static CommitNode *load_parent_info(char *commit_id) {
+CommitNode *load_parent_info(char *commit_id) {
     CommitNode *parent_node = (CommitNode *)malloc(sizeof(CommitNode));
     if (parent_node == NULL)
         ErrnoHandler(__func__, __FILE__, __LINE__);
@@ -58,7 +49,7 @@ static CommitNode *load_parent_info(char *commit_id) {
     parent_node->commit_id = commit_id;
 
     char parent_dir[1024];
-    snprintf(parent_dir, sizeof(parent_dir), "%s/%s/%s", objects_dir, commit_id, "info");
+    snprintf(parent_dir, 1024, "%s/%s/%s", objects_dir, commit_id, "info");
 
     FILE *parent_info = fopen(parent_dir, "r");
     if (parent_info == NULL)
@@ -69,26 +60,37 @@ static CommitNode *load_parent_info(char *commit_id) {
     fgets(buffer, 128, parent_info);
     buffer[strcspn(buffer, "\n")] = '\0';
     parent_node->datetime = str_dup(buffer);
-    fgets(buffer, 128, parent_info);
+
+    if (fgets(buffer, 128, parent_info) != NULL) {
+        if (strchr(buffer, ',')) {
+            sscanf(buffer, "%ld, %s\n", &parent_node->parent_num, buffer);
+            parent_node->parent = (CommitNode **)malloc(sizeof(CommitNode *));
+            if (parent_node->parent == NULL)
+                ErrnoHandler(__func__, __FILE__, __LINE__);
+            char *parent_commit_id = str_dup(buffer);
+            parent_node->parent[0] = load_parent_info(parent_commit_id);
+        } else {
+            parent_node->parent_num = 0;
+            parent_node->parent = NULL;
+        }
+    }
 
     size_t current_pos = ftell(parent_info);
     fseek(parent_info, 0, SEEK_END);
-    size_t log_length = ftell(parent_info) - current_pos;
+    size_t log_length = ftell(parent_info) - current_pos - 1;
     parent_node->log = (char *)malloc(log_length + 1);
     fseek(parent_info, current_pos, SEEK_SET);
     fread(parent_node->log, 1, log_length, parent_info);
     parent_node->log[log_length] = '\0';
 
     parent_node->snapshot = NULL;
-    parent_node->parent = NULL;
-    parent_node->parent_num = 0;
 
     fclose(parent_info);
 
     return parent_node;
 }
 
-static CommitNode *CommitNodeCreate(const char *log) {
+CommitNode *CommitNodeCreate(char *log) {
     CommitNode *new_node = (CommitNode *)malloc(sizeof(CommitNode));
     if (new_node == NULL)
         ErrnoHandler(__func__, __FILE__, __LINE__);
@@ -101,7 +103,7 @@ static CommitNode *CommitNodeCreate(const char *log) {
     datetime_now = localtime(&time_now);
     strftime(buffer, 100, "%Y/%m/%d %H:%M:%S", datetime_now);
 
-    new_node->log = str_dup(log);
+    new_node->log = log;
     new_node->datetime = str_dup(buffer);
     new_node->snapshot = read_index_file(&size);
 
@@ -124,7 +126,7 @@ static CommitNode *CommitNodeCreate(const char *log) {
     return new_node;
 }
 
-static void CommitNodeFree(CommitNode **node) {
+void CommitNodeFree(CommitNode **node) {
     free((*node)->log);
     (*node)->log = NULL;
     free((*node)->datetime);
@@ -199,12 +201,18 @@ static char *log_from_editor() {
     return log;
 }
 
+char *commit_log_insert(char *log_message) {
+    if (log_message == NULL)
+        return log_from_editor();
+    return str_dup(log_message);
+}
+
 static void scan_and_create_snapshot(SnapshotNode *node) {
     FileInfo *current_file = get_fileinfo(node);
     mk_dir_and_file(current_file->path, current_file->content);
 }
 
-static void save_object_file(CommitNode *node) {
+void save_object_file(CommitNode *node) {
     if (access(objects_dir, F_OK) == -1) {
         if (mkdir(objects_dir, 0775) == -1)
             ErrnoHandler(__func__, __FILE__, __LINE__);
@@ -256,32 +264,8 @@ static void save_object_file(CommitNode *node) {
     cd_to_project_root(NULL);
 }
 
-static void leader_update(CommitNode *node) {
+void leader_update(CommitNode *node) {
     FILE *leader_file = fopen(".big/Leader", "w");
     fprintf(leader_file, "%s\n", node->commit_id);
     fclose(leader_file);
-}
-
-void commit(const char *log_message) {
-    cd_to_project_root(NULL);
-
-    if (access(".big/index", F_OK) == -1)
-        ErrorCustomMsg("Error: Nothing to commit\n");
-
-    char *log;
-    if (log_message == NULL)
-        log = log_from_editor();
-    else
-        log = str_dup(log_message);
-
-    CommitNode *new_commit = CommitNodeCreate(log);
-    free(log);
-    log = NULL;
-
-    save_object_file(new_commit);
-
-    leader_update(new_commit);
-
-    remove(".big/index");
-    CommitNodeFree(&new_commit);
 }

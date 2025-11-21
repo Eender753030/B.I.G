@@ -1,4 +1,4 @@
-#include "snapshot.h"
+#include "core/snapshot.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -8,8 +8,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "error_handle.h"
-#include "utils.h"
+#include "utils/error_handle.h"
+#include "utils/file_handle.h"
+#include "utils/utils.h"
 
 typedef struct SnapshotNode {
     FileInfo *file;  // TODO: If file wasn't changed. Direct point to earlier commit's FileInfo
@@ -20,31 +21,6 @@ typedef struct SnapshotNode {
 struct SnapshotBST {
     SnapshotNode *root;
 };
-
-static char *read_whole_file(const char *full_path) {
-    FILE *file = fopen(full_path, "rb");
-    if (file == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-
-    fseek(file, 0, SEEK_END);
-    size_t file_len = ftell(file);
-
-    char *buffer = (char *)malloc(file_len + 1);
-    if (buffer == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-
-    rewind(file);
-
-    size_t bytes_read = fread(buffer, 1, file_len, file);
-    if (bytes_read != file_len)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-
-    buffer[file_len] = '\0';
-
-    fclose(file);
-
-    return buffer;
-}
 
 static SnapshotNode *SnapshotNodeCreate(const char *path) {
     SnapshotNode *new_node = (SnapshotNode *)malloc(sizeof(SnapshotNode));
@@ -108,7 +84,7 @@ static void freeNode(SnapshotNode **node) {
     (*node) = NULL;
 }
 
-static int SnapshotBSTInsert(SnapshotBST **bst, const char *path) {
+int SnapshotBSTInsert(SnapshotBST **bst, const char *path) {
     SnapshotNode *new_node = SnapshotNodeCreate(path);
 
     if ((*bst)->root == NULL) {
@@ -220,7 +196,7 @@ void inorder_traversal_func(SnapshotBST *bst, void (*action)(SnapshotNode *)) {
     _inorder_traversal_func_recu(bst->root, action);
 }
 
-static void save_index_file(SnapshotBST *bst, size_t total_size) {
+void save_index_file(SnapshotBST *bst, size_t total_size) {
     cd_to_project_root(NULL);
 
     FILE *index_file = fopen(".big/index", "w");
@@ -293,72 +269,6 @@ SnapshotBST *read_index_file(size_t *total_size) {
     chdir(org_dir);
 
     return bst;
-}
-
-void add(size_t input_size, const char **root_path_list) {
-    for (size_t i = 0; i < input_size; i++) {
-        if (access(root_path_list[i], F_OK) == -1) {
-            ErrorCustomMsg("Error: '%s' did not match to any file or directory.\n",
-                           root_path_list[i]);
-        }
-        if (access(".big", F_OK) == 0 && strncmp(root_path_list[i], "..", 3) == 0)
-            ErrorCustomMsg("Error: '..' is outside project directory.\n");
-    }
-
-    char *org_dir;
-    cd_to_project_root(&org_dir);
-
-    char root_dir[1024];
-    if (getcwd(root_dir, 1024) == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-
-    size_t total_size = 0;
-
-    SnapshotBST *bst = read_index_file(&total_size);
-
-    struct stat *file_stat = (struct stat *)malloc(sizeof(struct stat));
-    if (file_stat == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-
-    for (size_t i = 0; i < input_size; i++) {
-        char normalized_path[2048];
-
-        char temp_path[2048];
-        snprintf(temp_path, sizeof(temp_path), "%s/%s", org_dir, root_path_list[i]);
-
-        char absolute_path[2048];
-        if (realpath(temp_path, absolute_path) == NULL)
-            ErrnoHandler(__func__, __FILE__, __LINE__);
-        char *relative_path = strstr(absolute_path, root_dir);
-
-        if (relative_path != NULL && strcmp(relative_path, root_dir) != 0) {
-            relative_path += strlen(root_dir) + 1;
-            strcpy(normalized_path, relative_path);
-        } else {
-            strcpy(normalized_path, ".");
-        }
-
-        if (strncmp(normalized_path, ".", 2) == 0)
-            process_path(&bst, ".", &total_size);
-        else {
-            if (stat(normalized_path, file_stat) == -1)
-                ErrnoHandler(__func__, __FILE__, __LINE__);
-
-            if (S_ISDIR(file_stat->st_mode))
-                process_path(&bst, normalized_path, &total_size);
-            else {
-                if (SnapshotBSTInsert(&bst, normalized_path) == 0)
-                    total_size++;
-            }
-        }
-    }
-
-    save_index_file(bst, total_size);
-
-    free(org_dir);
-    free(file_stat);
-    file_stat = NULL;
-    SnapshotBSTDestory(&bst);
 }
 
 FileInfo *get_fileinfo(SnapshotNode *node) {
