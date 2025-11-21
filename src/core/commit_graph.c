@@ -21,7 +21,7 @@ static const char objects_dir[] = ".big/objects";
 char *load_leader() {
     FILE *leader = fopen(".big/Leader", "r");
     if (leader == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+        return NULL;
 
     fseek(leader, 0, SEEK_END);
     size_t leader_id_length = ftell(leader);
@@ -32,8 +32,7 @@ char *load_leader() {
     fseek(leader, 0, SEEK_SET);
     char *leader_id = (char *)malloc(leader_id_length + 1);
     if (leader_id == NULL)
-
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+        return NULL;
 
     fgets(leader_id, leader_id_length, leader);
     leader_id[leader_id_length] = '\0';
@@ -50,7 +49,7 @@ CommitNode *load_parent_info(char *commit_id) {
     parent_node->commit_id = commit_id;
 
     char parent_dir[1024];
-    snprintf(parent_dir, sizeof(parent_dir), "%s/%s/%s", objects_dir, commit_id, "info");
+    snprintf(parent_dir, 1024, "%s/%s/%s", objects_dir, commit_id, "info");
 
     FILE *parent_info = fopen(parent_dir, "r");
     if (parent_info == NULL)
@@ -62,17 +61,19 @@ CommitNode *load_parent_info(char *commit_id) {
     buffer[strcspn(buffer, "\n")] = '\0';
     parent_node->datetime = str_dup(buffer);
 
-    parent_node->parent_num = 0;
-    fscanf(parent_info, "%ld, %s\n", &parent_node->parent_num, buffer);
-
-    if (parent_node->parent_num > 0) {
-        parent_node->parent = (CommitNode **)malloc(sizeof(CommitNode *));
-        if (parent_node->parent == NULL)
-            ErrnoHandler(__func__, __FILE__, __LINE__);
-        char *parent_commit_id = str_dup(buffer);
-        parent_node->parent[0] = load_parent_info(parent_commit_id);
-    } else
-        parent_node->parent = NULL;
+    if (fgets(buffer, 128, parent_info) != NULL) {
+        if (strchr(buffer, ',')) {
+            sscanf(buffer, "%ld, %s\n", &parent_node->parent_num, buffer);
+            parent_node->parent = (CommitNode **)malloc(sizeof(CommitNode *));
+            if (parent_node->parent == NULL)
+                ErrnoHandler(__func__, __FILE__, __LINE__);
+            char *parent_commit_id = str_dup(buffer);
+            parent_node->parent[0] = load_parent_info(parent_commit_id);
+        } else {
+            parent_node->parent_num = 0;
+            parent_node->parent = NULL;
+        }
+    }
 
     size_t current_pos = ftell(parent_info);
     fseek(parent_info, 0, SEEK_END);

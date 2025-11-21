@@ -4,9 +4,14 @@
 #include <stdlib.h>
 
 #include "core/commit_graph.h"
+#include "utils/error_handle.h"
 
 void cmd_log(const long *amount) {
-    CommitNode *leader_node = load_parent_info(load_leader());
+    char *leader_id = load_leader();
+    if (leader_id == NULL)
+        ErrorCustomMsg("No commit\n");
+
+    CommitNode *leader_node = load_parent_info(leader_id);
 
     CommitNode *current_node = leader_node;
     if (amount == NULL) {
