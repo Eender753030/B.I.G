@@ -19,6 +19,7 @@ void ErrnoHandler(const char *func_name, const char *file_name, const int line) 
             strerror(errno));
     exit(EXIT_FAILURE);
 }
+
 void ErrorCustomMsg(const char *msg, ...) {
     va_list args;
     va_start(args, msg);

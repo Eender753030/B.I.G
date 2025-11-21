@@ -13,9 +13,15 @@ typedef struct SnapshotNode SnapshotNode;
 
 typedef struct SnapshotBST SnapshotBST;
 
+int SnapshotBSTInsert(SnapshotBST **bst, const char *path);
+
 void SnapshotBSTDestory(SnapshotBST **bst);
 
+void process_path(SnapshotBST **bst, const char *root_path, size_t *list_length);
+
 SnapshotBST *read_index_file(size_t *total_size);
+
+void save_index_file(SnapshotBST *bst, size_t total_size);
 
 void add(const size_t input_size, const char **path_list);
 

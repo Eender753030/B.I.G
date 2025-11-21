@@ -1,4 +1,4 @@
-#include "commands/init.h"
+#include "commands/cmd_init.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -10,26 +10,7 @@
 
 static const char dir_name[] = ".big";
 
-int check_init() {
-    char org_dir[1024];
-    if (getcwd(org_dir, 1024) == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-
-    char cwd[1024];
-
-    do {
-        getcwd(cwd, 1024);
-        if (access(".big", F_OK) != -1) {
-            chdir(org_dir);
-            return 0;
-        }
-        chdir("..");
-    } while (strncmp(cwd, "/", 2));
-
-    return -1;
-}
-
-void init() {
+void cmd_init() {
     if (access(".big", F_OK) != -1) {
         fprintf(stderr, "Error: Directory already initalize. Operation cancelled\n");
         return;
