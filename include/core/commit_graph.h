@@ -1,7 +1,22 @@
 #ifndef COMMIT_GRAPH_H
 #define COMMIT_GRAPH_H
 
-typedef struct CommitNode CommitNode;
+#include <stdlib.h>
+
+#include "core/snapshot.h"
+
+typedef struct CommitNode {
+    SnapshotBST *snapshot;
+    char *log;
+    char *datetime;
+    struct CommitNode **parent;
+    size_t parent_num;
+    char *commit_id;
+} CommitNode;
+
+char *load_leader();
+
+CommitNode *load_parent_info(char *commit_id);
 
 CommitNode *CommitNodeCreate(char *log);
 

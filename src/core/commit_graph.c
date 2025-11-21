@@ -15,19 +15,10 @@
 #include "utils/file_handle.h"
 #include "utils/utils.h"
 
-typedef struct CommitNode {
-    SnapshotBST *snapshot;
-    char *log;
-    char *datetime;
-    struct CommitNode **parent;
-    size_t parent_num;
-    char *commit_id;
-} CommitNode;
-
 static const char temp_log_filename[] = ".big/temp_log.txt";
 static const char objects_dir[] = ".big/objects";
 
-static char *load_leader() {
+char *load_leader() {
     FILE *leader = fopen(".big/Leader", "r");
     if (leader == NULL)
         ErrnoHandler(__func__, __FILE__, __LINE__);
@@ -51,7 +42,7 @@ static char *load_leader() {
     return leader_id;
 }
 
-static CommitNode *load_parent_info(char *commit_id) {
+CommitNode *load_parent_info(char *commit_id) {
     CommitNode *parent_node = (CommitNode *)malloc(sizeof(CommitNode));
     if (parent_node == NULL)
         ErrnoHandler(__func__, __FILE__, __LINE__);
