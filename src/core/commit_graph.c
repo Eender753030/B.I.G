@@ -70,19 +70,28 @@ static CommitNode *load_parent_info(char *commit_id) {
     fgets(buffer, 128, parent_info);
     buffer[strcspn(buffer, "\n")] = '\0';
     parent_node->datetime = str_dup(buffer);
-    fgets(buffer, 128, parent_info);
+
+    parent_node->parent_num = 0;
+    fscanf(parent_info, "%ld, %s\n", &parent_node->parent_num, buffer);
+
+    if (parent_node->parent_num > 0) {
+        parent_node->parent = (CommitNode **)malloc(sizeof(CommitNode *));
+        if (parent_node->parent == NULL)
+            ErrnoHandler(__func__, __FILE__, __LINE__);
+        char *parent_commit_id = str_dup(buffer);
+        parent_node->parent[0] = load_parent_info(parent_commit_id);
+    } else
+        parent_node->parent = NULL;
 
     size_t current_pos = ftell(parent_info);
     fseek(parent_info, 0, SEEK_END);
-    size_t log_length = ftell(parent_info) - current_pos;
+    size_t log_length = ftell(parent_info) - current_pos - 1;
     parent_node->log = (char *)malloc(log_length + 1);
     fseek(parent_info, current_pos, SEEK_SET);
     fread(parent_node->log, 1, log_length, parent_info);
     parent_node->log[log_length] = '\0';
 
     parent_node->snapshot = NULL;
-    parent_node->parent = NULL;
-    parent_node->parent_num = 0;
 
     fclose(parent_info);
 
