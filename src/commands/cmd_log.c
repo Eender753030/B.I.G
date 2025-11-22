@@ -4,7 +4,13 @@
 #include <stdlib.h>
 
 #include "core/commit_graph.h"
+#include "utils/color.h"
 #include "utils/error_handle.h"
+
+static inline void print_log(CommitNode *node) {
+    printf(COLOR_BROWN "Commit: %s\t" COLOR_END "Date: %s\tLog: \"%s\"\n", node->commit_id,
+           node->datetime, node->log);
+}
 
 void cmd_log(const long *amount) {
     char *leader_id = load_leader();
@@ -16,16 +22,14 @@ void cmd_log(const long *amount) {
     CommitNode *current_node = leader_node;
     if (amount == NULL) {
         while (current_node != NULL) {
-            printf("Commit: %s  Date: %s  Log: %s\n", current_node->commit_id,
-                   current_node->datetime, current_node->log);
+            print_log(current_node);
             if (current_node->parent == NULL)
                 break;
             current_node = current_node->parent[0];
         }
     } else {
         for (long i = 0; i < *amount; i++) {
-            printf("Commit: %s  Date: %s  Log: %s\n", current_node->commit_id,
-                   current_node->datetime, current_node->log);
+            print_log(current_node);
             if (current_node->parent == NULL)
                 break;
             current_node = current_node->parent[0];
