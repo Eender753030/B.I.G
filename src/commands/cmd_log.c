@@ -12,7 +12,24 @@ static inline void print_log(CommitNode *node) {
            node->datetime, node->log);
 }
 
-void cmd_log(const long *amount) {
+void cmd_log(int argc, char *argv[]) {
+    long amount;
+
+    if (argc == 2)
+        amount = -1;
+    else if (argc == 3) {
+        char *c = argv[2] + 1;
+        if (*argv[2] == '-' && *c >= '0' && *c <= '9') {
+            for (; *c != '\0'; c++) {
+                if (*c < '0' || *c > '9')
+                    ErrorCustomMsg("'%s' is not a positive integer\n", argv[2] + 1);
+            }
+            amount = strtol(argv[2] + 1, NULL, 10);
+        } else
+            ErrorCustomMsg("Usage: big log [-<amount>]\n");
+    } else
+        ErrorCustomMsg("Usage: big log [-<amount>]\n");
+
     char *leader_id = load_leader();
     if (leader_id == NULL)
         ErrorCustomMsg("No commit\n");
@@ -20,7 +37,7 @@ void cmd_log(const long *amount) {
     CommitNode *leader_node = load_parent_info(leader_id);
 
     CommitNode *current_node = leader_node;
-    if (amount == NULL) {
+    if (amount == -1) {
         while (current_node != NULL) {
             print_log(current_node);
             if (current_node->parent == NULL)
@@ -28,7 +45,7 @@ void cmd_log(const long *amount) {
             current_node = current_node->parent[0];
         }
     } else {
-        for (long i = 0; i < *amount; i++) {
+        for (long i = 0; i < amount; i++) {
             print_log(current_node);
             if (current_node->parent == NULL)
                 break;

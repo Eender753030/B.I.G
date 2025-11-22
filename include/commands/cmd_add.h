@@ -3,6 +3,6 @@
 
 #include <stdlib.h>
 
-void cmd_add(size_t input_size, const char **root_path_list);
+void cmd_add(int argc, char *argv[]);
 
 #endif
