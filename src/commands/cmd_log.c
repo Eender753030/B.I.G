@@ -6,6 +6,7 @@
 #include "core/commit_graph.h"
 #include "utils/color.h"
 #include "utils/error_handle.h"
+#include "utils/utils.h"
 
 static inline void print_log(CommitNode *node) {
     printf(COLOR_BROWN "Commit: %s\t" COLOR_END "Date: %s\tLog: \"%s\"\n", node->commit_id,
@@ -13,18 +14,21 @@ static inline void print_log(CommitNode *node) {
 }
 
 void cmd_log(int argc, char *argv[]) {
+    if (check_init() == -1)
+        NotInitError();
+
     long amount;
 
-    if (argc == 2)
+    if (argc == 1)
         amount = -1;
-    else if (argc == 3) {
-        char *c = argv[2] + 1;
-        if (*argv[2] == '-' && *c >= '0' && *c <= '9') {
+    else if (argc == 2) {
+        char *c = argv[1] + 1;
+        if (*argv[1] == '-' && *c >= '0' && *c <= '9') {
             for (; *c != '\0'; c++) {
                 if (*c < '0' || *c > '9')
-                    ErrorCustomMsg("'%s' is not a positive integer\n", argv[2] + 1);
+                    ErrorCustomMsg("'%s' is not a positive integer\n", argv[1] + 1);
             }
-            amount = strtol(argv[2] + 1, NULL, 10);
+            amount = strtol(argv[1] + 1, NULL, 10);
         } else
             ErrorCustomMsg("Usage: big log [-<amount>]\n");
     } else

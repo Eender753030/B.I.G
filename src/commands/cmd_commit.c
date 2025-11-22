@@ -9,13 +9,16 @@
 #include "utils/utils.h"
 
 void cmd_commit(int argc, char *argv[]) {
+    if (check_init() == -1)
+        NotInitError();
+
     char *log_message;
 
-    if (argc == 2)
+    if (argc == 1)
         log_message = NULL;
     else {
-        if (strncmp(argv[2], "-m", 3) == 0 && argc == 4)
-            log_message = argv[3];
+        if (strncmp(argv[1], "-m", 3) == 0 && argc == 3)
+            log_message = argv[2];
         else
             ErrorCustomMsg("Usage: big commit [-m \"<log message>\"]\n");
     }
