@@ -5,6 +5,7 @@
 #include "commands/cmd_commit.h"
 #include "commands/cmd_init.h"
 #include "commands/cmd_log.h"
+#include "commands/cmd_status.h"
 #include "utils/error_handle.h"
 #include "utils/utils.h"
 
@@ -14,7 +15,7 @@ int main(int argc, char **argv) {
 
     if (strncmp(argv[1], "init", 5) == 0) {
         if (argc == 2)
-        cmd_init();
+            cmd_init();
         else
             ErrorCustomMsg("Usage: big init\n");
 
@@ -45,19 +46,23 @@ int main(int argc, char **argv) {
         else if (argc == 3) {
             char *c = argv[2] + 1;
             if (*argv[2] == '-' && *c >= '0' && *c <= '9') {
-                        for (; *c != '\0'; c++) {
-                            if (*c < '0' || *c > '9')
+                for (; *c != '\0'; c++) {
+                    if (*c < '0' || *c > '9')
                         ErrorCustomMsg("'%s' is not a positive integer\n", argv[2] + 1);
-                        }
+                }
                 long amount = strtol(argv[2] + 1, NULL, 10);
-                        cmd_log(&amount);
+                cmd_log(&amount);
 
-                    } else
-                        ErrorCustomMsg("Usage: big log [-<amount>]\n");
-                } else
-                    ErrorCustomMsg("Usage: big log [-<amount>]\n");
-            }
-        }
+            } else
+                ErrorCustomMsg("Usage: big log [-<amount>]\n");
+        } else
+            ErrorCustomMsg("Usage: big log [-<amount>]\n");
+
+    } else if (strncmp(argv[1], "status", 7) == 0) {
+        if (argc == 2)
+            cmd_status();
+        else
+            ErrorCustomMsg("Usage: big status\n");
 
     } else
         InputError();
