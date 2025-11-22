@@ -10,7 +10,11 @@
 
 static const char dir_name[] = ".big";
 
-void cmd_init() {
+void cmd_init(int argc, char *argv[]) {
+    if (argc > 2) {
+        ErrorCustomMsg("Usage: big init\n");
+    }
+
     if (access(".big", F_OK) != -1) {
         fprintf(stderr, "Error: Directory already initalize. Operation cancelled\n");
         return;

@@ -11,7 +11,18 @@
 #include "utils/file_handle.h"
 #include "utils/utils.h"
 
-void cmd_add(size_t input_size, const char **root_path_list) {
+void cmd_add(int argc, char *argv[]) {
+    if (check_init() == -1)
+        NotInitError();
+    if (argc < 3) {
+        ErrorCustomMsg(
+            "Usage: big add <filename or directory> <...>\n"
+            "Use 'big add .' in root of project directory to add whole\n");
+    }
+
+    size_t input_size = argc - 2;
+    char **root_path_list = argv + 2;
+
     for (size_t i = 0; i < input_size; i++) {
         if (access(root_path_list[i], F_OK) == -1) {
             ErrorCustomMsg("Error: '%s' did not match to any file or directory.\n",
