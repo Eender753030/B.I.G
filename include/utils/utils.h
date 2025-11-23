@@ -1,6 +1,11 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#define INITED 0
+#define NOT_ININ -1
+
+#define UNUSED(x) (void)(x)
+
 char *str_dup(const char *string);
 
 int check_init();

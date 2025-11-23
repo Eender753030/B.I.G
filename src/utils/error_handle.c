@@ -39,17 +39,19 @@ void ErrorCustomMsg(const char *msg, ...) {
                     printf("%d", val);
                     break;
                 }
-                case '%':
+                case '%': {
                     putchar('%');
                     break;
-                default:
+                }
+                default: {
                     putchar('%');
                     putchar(*msg);
+                }
             }
-        } else
+        } else {
             putchar(*msg);
+        }
     }
-
     va_end(args);
     exit(EXIT_FAILURE);
 }

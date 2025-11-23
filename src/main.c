@@ -19,7 +19,6 @@ int main(int argc, char **argv) {
     if (argc < 2) {
         InputError();
     }
-
     const char *input_cmd = argv[1];
 
     for (int num_of_cmd = 0; commands[num_of_cmd].cmd_name != NULL; num_of_cmd++) {
@@ -28,8 +27,6 @@ int main(int argc, char **argv) {
             return EXIT_SUCCESS;
         }
     }
-
     InputError();
-
     return EXIT_FAILURE;
 }

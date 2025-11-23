@@ -4,9 +4,12 @@
 #include "utils/utils.h"
 
 void cmd_status(int argc, char *argv[]) {
-    if (check_init() == -1)
-        NotInitError();
+    UNUSED(argv);
 
-    if (argc > 1)
+    if (check_init() == NOT_ININ) {
+        NotInitError();
+    }
+    if (argc > 1) {
         ErrorCustomMsg("Usage: big status\n");
+    }
 }

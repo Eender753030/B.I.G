@@ -9,7 +9,7 @@
 #include "utils/utils.h"
 
 void cmd_commit(int argc, char *argv[]) {
-    if (check_init() == -1)
+    if (check_init() == NOT_ININ)
         NotInitError();
 
     char *log_message;
@@ -17,10 +17,11 @@ void cmd_commit(int argc, char *argv[]) {
     if (argc == 1)
         log_message = NULL;
     else {
-        if (strncmp(argv[1], "-m", 3) == 0 && argc == 3)
+        if (strncmp(argv[1], "-m", 3) == 0 && argc == 3) {
             log_message = argv[2];
-        else
+        } else {
             ErrorCustomMsg("Usage: big commit [-m \"<log message>\"]\n");
+        }
     }
 
     cd_to_project_root(NULL);

@@ -8,20 +8,22 @@
 #include "utils/error_handle.h"
 #include "utils/utils.h"
 
+#define ALL -1
+
 static inline void print_log(CommitNode *node) {
     printf(COLOR_BROWN "Commit: %s\t" COLOR_END "Date: %s\tLog: \"%s\"\n", node->commit_id,
            node->datetime, node->log);
 }
 
 void cmd_log(int argc, char *argv[]) {
-    if (check_init() == -1)
+    if (check_init() == NOT_ININ) {
         NotInitError();
-
+    }
     long amount;
 
-    if (argc == 1)
-        amount = -1;
-    else if (argc == 2) {
+    if (argc == 1) {
+        amount = ALL;
+    } else if (argc == 2) {
         char *c = argv[1] + 1;
         if (*argv[1] == '-' && *c >= '0' && *c <= '9') {
             for (; *c != '\0'; c++) {
@@ -41,7 +43,7 @@ void cmd_log(int argc, char *argv[]) {
     CommitNode *leader_node = load_parent_info(leader_id);
 
     CommitNode *current_node = leader_node;
-    if (amount == -1) {
+    if (amount == ALL) {
         while (current_node != NULL) {
             print_log(current_node);
             if (current_node->parent == NULL)

@@ -7,20 +7,23 @@
 #include <unistd.h>
 
 #include "utils/error_handle.h"
+#include "utils/utils.h"
 
 static const char dir_name[] = ".big";
 
 void cmd_init(int argc, char *argv[]) {
+    UNUSED(argv);
+
     if (argc > 1) {
         ErrorCustomMsg("Usage: big init\n");
     }
 
-    if (access(".big", F_OK) != -1)
+    if (access(".big", F_OK) != -1) {
         ErrorCustomMsg("Error: Directory already initalize. Operation cancelled\n");
-
+    }
     printf("Start to initalize B.I.G structure...\n");
-    if (mkdir(dir_name, 0775) == -1)
+    if (mkdir(dir_name, 0775) == -1) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
-
+    }
     printf("Directory initalize complete\n");
 }

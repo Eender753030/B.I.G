@@ -9,6 +9,7 @@
 #include "core/snapshot.h"
 #include "utils/error_handle.h"
 #include "utils/file_handle.h"
+#include "utils/memory.h"
 #include "utils/utils.h"
 
 static void check_add_files(const char *path) {
@@ -39,7 +40,7 @@ static void process_dir_or_file(const char *path, size_t *total_size, SnapshotBS
 }
 
 void cmd_add(int argc, char *argv[]) {
-    if (check_init() == -1) {
+    if (check_init() == NOT_ININ) {
         NotInitError();
     }
     if (argc < 2) {
@@ -48,7 +49,7 @@ void cmd_add(int argc, char *argv[]) {
             "Use 'big add .' in root of project directory to add whole\n");
     }
 
-    size_t input_size = argc - 1;
+    size_t input_size = (size_t)(argc - 1);
     char **root_path_list = argv + 1;
 
     for (size_t i = 0; i < input_size; i++) {
@@ -74,7 +75,6 @@ void cmd_add(int argc, char *argv[]) {
 
     save_index_file(bst, total_size);
 
-    free(org_dir);
-    org_dir = NULL;
+    xfree(org_dir);
     SnapshotBSTDestory(&bst);
 }
