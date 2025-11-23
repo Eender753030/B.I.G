@@ -10,6 +10,15 @@
 #include "utils/error_handle.h"
 #include "utils/utils.h"
 
+FILE *_xfopen(const char *traget_file_name, const char *modes, const char *func_name,
+              const char *file_name, const int line) {
+    FILE *file = fopen(traget_file_name, modes);
+    if (file == NULL) {
+        ErrnoHandler(func_name, file_name, line);
+    }
+    return file;
+}
+
 char *read_whole_file(const char *file_name) {
     FILE *file = fopen(file_name, "rb");
     if (file == NULL)
