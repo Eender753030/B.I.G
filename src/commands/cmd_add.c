@@ -22,7 +22,7 @@ static void check_add_files(const char *path) {
     }
 }
 
-static void process_dir_or_file(const char *path, size_t *total_size, SnapshotBST **bst,
+static void process_dir_or_file(const char *path, size_t *total_size, SnapshotBST *bst,
                                 struct stat *file_stat) {
     if (strncmp(path, ".", 2) == 0)
         process_path(bst, ".", total_size);
@@ -67,7 +67,7 @@ void cmd_add(int argc, char *argv[]) {
     for (size_t i = 0; i < input_size; i++) {
         char *normalized_path = relative_path_calc(org_dir, root_path_list[i]);
 
-        process_dir_or_file(normalized_path, &total_size, &bst, &file_stat);
+        process_dir_or_file(normalized_path, &total_size, bst, &file_stat);
 
         free(normalized_path);
         normalized_path = NULL;

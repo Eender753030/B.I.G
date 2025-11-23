@@ -10,9 +10,9 @@ static const char usage_hint[] =
     "\nUsage: big <command> [<args>]\n\n"
     "Commands:\n"
     "\tbig init                             Initalize current directory to project root\n"
-    "\tbig add <file or direcotry> <...>    Add files into index to wait for commit\n"
-    "\tbig commit [-m <\"message\">]        Commit and enter log\n"
-    "\tbig log [-<number>]                  Show previous commit logs\n"
+    "\tbig add <file or direcotry> [<...>]    Add files into index to wait for commit\n"
+    "\tbig commit [-m <message>]        Commit and enter log\n"
+    "\tbig log [-<amount>]                  Show previous commit logs\n"
     "\tbig status                           Show the status of files from project root\n\n";
 
 void ErrnoHandler(const char *func_name, const char *file_name, const int line) {

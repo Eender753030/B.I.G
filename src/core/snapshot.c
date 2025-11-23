@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "utils/color.h"
 #include "utils/error_handle.h"
 #include "utils/file_handle.h"
 #include "utils/memory.h"
@@ -57,7 +58,7 @@ static SnapshotBST *SnapshotBSTCreate(char **path_list, size_t list_len) {
     return new_bst;
 }
 
-static SnapshotBST *SnapshotBSTCreateEmpty() {
+SnapshotBST *SnapshotBSTCreateEmpty() {
     SnapshotBST *new_bst = xmalloc(sizeof(*new_bst));
     new_bst->root = NULL;
 
@@ -74,13 +75,13 @@ static void freeNode(SnapshotNode **node) {
     xfree((*node));
 }
 
-int SnapshotBSTInsert(SnapshotBST **bst, const char *path) {
+int SnapshotBSTInsert(SnapshotBST *bst, const char *path) {
     SnapshotNode *new_node = SnapshotNodeCreate(path);
-    if ((*bst)->root == NULL) {
-        (*bst)->root = new_node;
+    if (bst->root == NULL) {
+        bst->root = new_node;
         return 0;
     }
-    SnapshotNode *current = (*bst)->root;
+    SnapshotNode *current = bst->root;
     int cmp_result;
     while (current != NULL) {
         cmp_result = strcmp(new_node->file->path, current->file->path);
@@ -107,6 +108,58 @@ int SnapshotBSTInsert(SnapshotBST **bst, const char *path) {
     return 0;
 }
 
+int SnapshotBSTDelete(SnapshotBST *bst, const char *target_path, size_t *total_size) {
+    if (bst == NULL || bst->root == NULL) {
+        return NOT_FOUND;
+    }
+    SnapshotNode *parent = NULL;
+    SnapshotNode *current = bst->root;
+    int cmp_result;
+    while (current != NULL && (cmp_result = strcmp(target_path, current->file->path)) != 0) {
+        parent = current;
+        if (cmp_result > 0) {
+            current = current->right;
+        } else if (cmp_result < 0) {
+            current = current->left;
+        }
+    }
+    if (current == NULL) {
+        return NOT_FOUND;
+    }
+    if (current->left != NULL && current->right != NULL) {
+        SnapshotNode *successor_parent = current;
+        SnapshotNode *successor = current->right;
+        while (successor->left != NULL) {
+            successor_parent = successor;
+            successor = successor->left;
+        }
+        xfree(current->file->path);
+        xfree(current->file->content);
+
+        current->file->path = str_dup(successor->file->path);
+        current->file->content = str_dup(successor->file->content);
+
+        parent = successor_parent;
+        current = successor;
+    }
+
+    SnapshotNode *child = (current->left != NULL) ? current->left : current->right;
+
+    if (parent == NULL) {
+        bst->root = child;
+    } else {
+        if (current == parent->left) {
+            parent->left = child;
+        } else {
+            parent->right = child;
+        }
+    }
+
+    (*total_size)--;
+    freeNode(&current);
+    return FOUND;
+}
+
 static void SnapshotNodesFree(SnapshotNode *node) {
     if (node == NULL) {
         return;
@@ -124,7 +177,7 @@ void SnapshotBSTDestory(SnapshotBST **bst) {
     xfree(*bst);
 }
 
-void process_path(SnapshotBST **bst, const char *root_path, size_t *list_length) {
+void process_path(SnapshotBST *bst, const char *root_path, size_t *list_length) {
     DIR *dir = opendir(root_path);
     if (dir == NULL) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
@@ -185,7 +238,38 @@ void inorder_traversal_func(SnapshotBST *bst, void (*action)(SnapshotNode *)) {
     _inorder_traversal_func_recu(bst->root, action);
 }
 
+static void _inorder_traversal_print(SnapshotNode *node, const char *msg, const char *color) {
+    if (node == NULL) {
+        return;
+    }
+    _inorder_traversal_print(node->left, msg, color);
+    printf("%s%s%s\n" COLOR_END, color, msg, node->file->path);
+    _inorder_traversal_print(node->right, msg, color);
+}
+
+void inorder_traversal_print(SnapshotBST *bst, const char *msg, const char *color) {
+    _inorder_traversal_print(bst->root, msg, color);
+}
+
+static void _inorder_traversal_delete(SnapshotBST *bst, SnapshotNode *node, size_t *total_size) {
+    if (bst == NULL || node == NULL) {
+        return;
+    }
+    _inorder_traversal_delete(bst, node->left, total_size);
+    SnapshotBSTDelete(bst, node->file->path, total_size);
+    _inorder_traversal_delete(bst, node->right, total_size);
+}
+
+void inorder_traversal_delete(SnapshotBST *target_bst, SnapshotBST *ref_bst,
+                              size_t *target_total_size) {
+    _inorder_traversal_delete(target_bst, ref_bst->root, target_total_size);
+}
+
 void save_index_file(SnapshotBST *bst, size_t total_size) {
+    if (bst == NULL || total_size == 0) {
+        return;
+    }
+
     cd_to_project_root(NULL);
 
     FILE *index_file = xfopen(".big/index", "w");
@@ -220,7 +304,7 @@ SnapshotBST *read_index_file(size_t *total_size) {
         return bst;
     }
 
-    fscanf(index_file, "%ld\n", total_size);
+    fscanf(index_file, "%lu\n", total_size);
 
     if (total_size == 0) {
         SnapshotBST *bst = SnapshotBSTCreateEmpty();

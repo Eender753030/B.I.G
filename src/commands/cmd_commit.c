@@ -26,9 +26,9 @@ void cmd_commit(int argc, char *argv[]) {
 
     cd_to_project_root(NULL);
 
-    if (access(".big/index", F_OK) == -1)
+    if (access(".big/index", F_OK) == -1) {
         ErrorCustomMsg("Error: Nothing to commit\n");
-
+    }
     CommitNode *new_commit = CommitNodeCreate(commit_log_insert(log_message));
 
     save_object_file(new_commit);

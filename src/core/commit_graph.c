@@ -20,7 +20,10 @@ static const char temp_log_filename[] = ".big/temp_log.txt";
 static const char objects_dir[] = ".big/objects";
 
 char *load_leader() {
-    FILE *leader = xfopen(".big/Leader", "r");
+    FILE *leader = fopen(".big/Leader", "r");
+    if (leader == NULL) {
+        return NULL;
+    }
 
     fseek(leader, 0, SEEK_END);
     size_t leader_id_length = (size_t)ftell(leader);
