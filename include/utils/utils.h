@@ -7,7 +7,7 @@ int check_init();
 
 void cd_to_project_root(char **org_dir);
 
-unsigned long hash_function(char *string);
+unsigned long hash_function(const char *string);
 
 char *hash_to_string(unsigned long hash);
 

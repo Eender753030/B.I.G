@@ -10,8 +10,8 @@
 #include "utils/error_handle.h"
 #include "utils/utils.h"
 
-char *read_whole_file(const char *full_path) {
-    FILE *file = fopen(full_path, "rb");
+char *read_whole_file(const char *file_name) {
+    FILE *file = fopen(file_name, "rb");
     if (file == NULL)
         ErrnoHandler(__func__, __FILE__, __LINE__);
 
@@ -24,15 +24,15 @@ char *read_whole_file(const char *full_path) {
 
     rewind(file);
 
-    size_t bytes_read = fread(buffer, 1, file_len, file);
+    size_t bytes_read = fread(content, 1, file_len, file);
     if (bytes_read != file_len)
         ErrnoHandler(__func__, __FILE__, __LINE__);
 
-    buffer[file_len] = '\0';
+    content[file_len] = '\0';
 
     fclose(file);
 
-    return buffer;
+    return content;
 }
 
 void mk_dir_and_file(const char *path, const char *content) {

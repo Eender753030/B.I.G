@@ -20,14 +20,14 @@ char *str_dup(const char *string) {
 }
 
 int check_init() {
-    char org_dir[1024];
-    if (getcwd(org_dir, 1024) == NULL)
+    char org_dir[4096];
+    if (getcwd(org_dir, 4096) == NULL)
         ErrnoHandler(__func__, __FILE__, __LINE__);
 
-    char cwd[1024];
+    char cwd[4096];
 
     do {
-        getcwd(cwd, 1024);
+        getcwd(cwd, 4096);
         if (access(".big", F_OK) != -1) {
             chdir(org_dir);
             return 0;
@@ -40,14 +40,18 @@ int check_init() {
 
 void cd_to_project_root(char **org_dir) {
     if (org_dir != NULL) {
-        *org_dir = (char *)malloc(1024);
-        if (*org_dir == NULL || getcwd(*org_dir, 1024) == NULL)
+        char buffer[4096];
+        if (getcwd(buffer, 4096) == NULL)
+            ErrnoHandler(__func__, __FILE__, __LINE__);
+
+        *org_dir = str_dup(buffer);
+        if (*org_dir == NULL)
             ErrnoHandler(__func__, __FILE__, __LINE__);
     }
 
-    char current_dir[1024];
+    char current_dir[4096];
     while (access(".big", F_OK) == -1) {
-        if (getcwd(current_dir, 1024) == NULL)
+        if (getcwd(current_dir, 4096) == NULL)
             ErrnoHandler(__func__, __FILE__, __LINE__);
 
         if (strncmp(current_dir, "/", 2) == 0)
@@ -58,11 +62,13 @@ void cd_to_project_root(char **org_dir) {
     }
 }
 
-unsigned long hash_function(char *string) {
+unsigned long hash_function(const char *string) {
     unsigned long hash = 5381;
-    for (; *string != '\0'; string++) {
-        hash = ((hash << 5) + hash) + *string;
+    char *temp_string = str_dup(string);
+    for (char *c = temp_string; *c != '\0'; c++) {
+        hash = ((hash << 5) + hash) + (unsigned long)*c;
     }
+    free(temp_string);
     return hash;
 }
 
