@@ -5,7 +5,7 @@ INC_DIR = include
 OBJ_DIR = build
 BIN_DIR = bin
 
-CFLAGS = -Wall -g -I${INC_DIR}
+CFLAGS = -Wall -Wextra -Wconversion -g -I${INC_DIR}
 
 TARGET = ${BIN_DIR}/big
 

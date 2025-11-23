@@ -15,10 +15,8 @@ void cmd_init(int argc, char *argv[]) {
         ErrorCustomMsg("Usage: big init\n");
     }
 
-    if (access(".big", F_OK) != -1) {
-        fprintf(stderr, "Error: Directory already initalize. Operation cancelled\n");
-        return;
-    }
+    if (access(".big", F_OK) != -1)
+        ErrorCustomMsg("Error: Directory already initalize. Operation cancelled\n");
 
     printf("Start to initalize B.I.G structure...\n");
     if (mkdir(dir_name, 0775) == -1)
