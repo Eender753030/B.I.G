@@ -23,19 +23,18 @@ static void check_add_files(const char *path) {
     }
 }
 
-static void process_dir_or_file(const char *path, size_t *total_size, SnapshotBST *bst,
-                                struct stat *file_stat) {
-    if (strncmp(path, ".", 2) == 0)
-        process_path(bst, ".", total_size);
-    else {
+static void process_dir_or_file(const char *path, SnapshotBST *bst, struct stat *file_stat,
+                                SnapshotBST *leader_bst, const char *leader_id) {
+    if (strncmp(path, ".", 2) == 0) {
+        process_path(bst, ".", leader_bst, leader_id);
+    } else {
         if (stat(path, file_stat) == -1)
             ErrnoHandler(__func__, __FILE__, __LINE__);
 
         if (S_ISDIR(file_stat->st_mode))
-            process_path(bst, path, total_size);
+            process_path(bst, path, leader_bst, leader_id);
         else {
-            if (SnapshotBSTInsert(bst, path) == 0)
-                (*total_size)++;
+            SnapshotBSTInsert(bst, path, leader_bst, leader_id);
         }
     }
 }
@@ -60,20 +59,26 @@ void cmd_add(int argc, char *argv[]) {
     char *org_dir;
     cd_to_project_root(&org_dir);
 
-    size_t total_size = 0;
+    char *leader_id;
+    SnapshotBST *leader_bst = read_leader_commit_BST(&leader_id);
 
-    SnapshotBST *bst = read_index_dic(&total_size);
+    SnapshotBST *bst = read_index_dic(leader_bst, leader_id);
 
     struct stat file_stat;
     for (size_t i = 0; i < input_size; i++) {
         char *normalized_path = relative_path_calc(org_dir, root_path_list[i]);
 
-        process_dir_or_file(normalized_path, &total_size, bst, &file_stat);
+        process_dir_or_file(normalized_path, bst, &file_stat, leader_bst, leader_id);
 
         free(normalized_path);
         normalized_path = NULL;
     }
 
-    save_index_dic(bst, total_size);
+    save_index_dic(bst);
+    if (leader_bst != NULL) {
+        xfree(leader_id);
+        SnapshotBSTDestory(&leader_bst);
+    }
+    xfree(org_dir);
     SnapshotBSTDestory(&bst);
 }

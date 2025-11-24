@@ -19,22 +19,20 @@ void cmd_status(int argc, char *argv[]) {
     }
     cd_to_project_root(NULL);
 
-    size_t total_size_index = 0;
-    SnapshotBST *bst_index = read_index_dic(&total_size_index);
+    SnapshotBST *bst_index = read_index_dic();
 
-    size_t total_size_dir = 0;
     SnapshotBST *bst_dir = SnapshotBSTCreateEmpty();
-    process_path(bst_dir, ".", &total_size_dir);
+    process_path(bst_dir, ".", NULL, NULL);
 
-    if (total_size_index != 0) {
+    if (amount_of_BST(bst_index) != 0) {
         printf("\nReady to commit:\n");
         inorder_traversal_print(bst_index, "\ttracked:    ", COLOR_GREEN);
         puts("");
 
-        inorder_traversal_delete(bst_dir, bst_index, &total_size_dir);
+        inorder_traversal_delete(bst_dir, bst_index);
     }
 
-    if (total_size_dir != 0) {
+    if (amount_of_BST(bst_dir) != 0) {
         printf("\nNot in index:\n");
         inorder_traversal_print(bst_dir, "\tuntracked:    ", COLOR_RED);
         puts("");

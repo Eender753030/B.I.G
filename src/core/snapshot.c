@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "core/commit_graph.h"
 #include "utils/color.h"
 #include "utils/error_handle.h"
 #include "utils/file_handle.h"
@@ -35,17 +36,24 @@ struct SnapshotBST {
     size_t node_amount;
 };
 
-// static void check_leader_commit() {
-//     // TODO: Check leader files and make unchanged file point to it.
-// }
-
-static SnapshotNode *SnapshotNodeCreate(const char *path) {
+static SnapshotNode *SnapshotNodeCreate(const char *path, SnapshotBST *leader_bst,
+                                        const char *leader_id) {
     SnapshotNode *new_node = xmalloc(sizeof(*new_node));
 
     new_node->file = xmalloc(sizeof(*(new_node->file)));
     new_node->file->path = str_dup(path);
-    new_node->file->ref.content = read_whole_file(path);  // TODO: Point to leader commit file
-    new_node->file->changed = false;
+    char *content = read_whole_file(path);
+    if (leader_bst != NULL && leader_id != NULL &&
+        SnapshotBST_Search_and_Compare(leader_bst, path, content) == MATCH) {
+        xfree(content);
+        char buffer[50];
+        snprintf(buffer, sizeof(buffer), "Point to commit: %s", leader_id);
+        new_node->file->ref.commit_id = str_dup(buffer);
+        new_node->file->changed = false;
+    } else {
+        new_node->file->ref.content = content;
+        new_node->file->changed = true;
+    }
 
     new_node->left = NULL;
     new_node->right = NULL;
@@ -53,23 +61,27 @@ static SnapshotNode *SnapshotNodeCreate(const char *path) {
     return new_node;
 }
 
-static SnapshotNode *path_list_build_BST(char **path_list, long long left, long long right) {
+static SnapshotNode *path_list_build_BST(char **path_list, long long left, long long right,
+                                         SnapshotBST *leader_bst, const char *leader_id) {
     if (left > right) {
         return NULL;
     }
     long long middle = left + (right - left) / 2;
 
-    SnapshotNode *root = SnapshotNodeCreate(path_list[middle]);
+    SnapshotNode *root = SnapshotNodeCreate(path_list[middle], leader_bst, leader_id);
 
-    root->left = path_list_build_BST(path_list, left, middle - 1);
-    root->right = path_list_build_BST(path_list, middle + 1, right);
+    root->left = path_list_build_BST(path_list, left, middle - 1, leader_bst, leader_id);
+    root->right = path_list_build_BST(path_list, middle + 1, right, leader_bst, leader_id);
 
     return root;
 }
 
-static SnapshotBST *SnapshotBSTCreate(char **path_list, size_t list_len) {
+static SnapshotBST *SnapshotBSTCreate(char **path_list, size_t list_len, SnapshotBST *leader_bst,
+                                      const char *leader_id) {
     SnapshotBST *new_bst = xmalloc(sizeof(*new_bst));
-    new_bst->root = path_list_build_BST(path_list, 0, (long long)list_len - 1);
+    new_bst->node_amount = list_len;
+    new_bst->root =
+        path_list_build_BST(path_list, 0, (long long)list_len - 1, leader_bst, leader_id);
 
     return new_bst;
 }
@@ -77,7 +89,7 @@ static SnapshotBST *SnapshotBSTCreate(char **path_list, size_t list_len) {
 SnapshotBST *SnapshotBSTCreateEmpty() {
     SnapshotBST *new_bst = xmalloc(sizeof(*new_bst));
     new_bst->root = NULL;
-
+    new_bst->node_amount = 0;
     return new_bst;
 }
 
@@ -91,42 +103,65 @@ static void freeNode(SnapshotNode **node) {
     xfree((*node));
 }
 
-int SnapshotBSTInsert(SnapshotBST *bst, const char *path) {
-    SnapshotNode *new_node = SnapshotNodeCreate(path);
+void SnapshotBSTInsert(SnapshotBST *bst, const char *path, SnapshotBST *leader_bst,
+                       const char *leader_id) {
     if (bst->root == NULL) {
-        bst->root = new_node;
-        return 0;
+        bst->root = SnapshotNodeCreate(path, leader_bst, leader_id);
+        bst->node_amount++;
+        return;
     }
     SnapshotNode *current = bst->root;
     int cmp_result;
     while (current != NULL) {
-        cmp_result = strcmp(new_node->file->path, current->file->path);
-
+        cmp_result = strcmp(path, current->file->path);
         if (cmp_result > 0) {
             if (current->right == NULL) {
-                current->right = new_node;
-                break;
+                current->right = SnapshotNodeCreate(path, leader_bst, leader_id);
+                bst->node_amount++;
+                return;
             }
             current = current->right;
 
         } else if (cmp_result < 0) {
             if (current->left == NULL) {
-                current->left = new_node;
-                break;
+                current->left = SnapshotNodeCreate(path, leader_bst, leader_id);
+                bst->node_amount++;
+
+                return;
             }
             current = current->left;
 
         } else {
-            freeNode(&new_node);
-            return -1;
+            return;
         }
     }
-    return 0;
 }
 
-int SnapshotBSTDelete(SnapshotBST *bst, const char *target_path, size_t *total_size) {
+bool SnapshotBST_Search_and_Compare(SnapshotBST *bst, const char *path, const char *content) {
+    if (bst->root == NULL) {
+        return NOT_MATCH;
+    }
+    SnapshotNode *current = bst->root;
+    int cmp_result;
+    while (current != NULL) {
+        cmp_result = strcmp(path, current->file->path);
+        if (cmp_result > 0) {
+            current = current->right;
+        } else if (cmp_result < 0) {
+            current = current->left;
+        } else {
+            if (strcmp(current->file->ref.content, content) == 0) {
+                return MATCH;
+            }
+            return NOT_MATCH;
+        }
+    }
+    return NOT_MATCH;
+}
+
+void SnapshotBSTDelete(SnapshotBST *bst, const char *target_path) {
     if (bst == NULL || bst->root == NULL) {
-        return NOT_FOUND;
+        return;
     }
     SnapshotNode *parent = NULL;
     SnapshotNode *current = bst->root;
@@ -140,7 +175,7 @@ int SnapshotBSTDelete(SnapshotBST *bst, const char *target_path, size_t *total_s
         }
     }
     if (current == NULL) {
-        return NOT_FOUND;
+        return;
     }
     if (current->left != NULL && current->right != NULL) {
         SnapshotNode *successor_parent = current;
@@ -171,9 +206,8 @@ int SnapshotBSTDelete(SnapshotBST *bst, const char *target_path, size_t *total_s
         }
     }
 
-    (*total_size)--;
+    bst->node_amount--;
     freeNode(&current);
-    return FOUND;
 }
 
 static void SnapshotNodesFree(SnapshotNode *node) {
@@ -193,7 +227,8 @@ void SnapshotBSTDestory(SnapshotBST **bst) {
     xfree(*bst);
 }
 
-void process_path(SnapshotBST *bst, const char *root_path, size_t *list_length) {
+void process_path(SnapshotBST *bst, const char *root_path, SnapshotBST *leader_bst,
+                  const char *leader_id) {
     DIR *dir = opendir(root_path);
     if (dir == NULL) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
@@ -221,13 +256,12 @@ void process_path(SnapshotBST *bst, const char *root_path, size_t *list_length) 
         }
 
         if (S_ISDIR(file_stat.st_mode)) {
-            process_path(bst, pathbuffer, list_length);
+            process_path(bst, pathbuffer, leader_bst, leader_id);
         } else {
-            if (SnapshotBSTInsert(bst, pathbuffer) == 0) {
-                (*list_length)++;
-            }
+            SnapshotBSTInsert(bst, pathbuffer, leader_bst, leader_id);
         }
     }
+
     xfree(dir);
 }
 
@@ -271,32 +305,31 @@ void inorder_traversal_print(SnapshotBST *bst, const char *msg, const char *colo
     _inorder_traversal_print(bst->root, msg, color);
 }
 
-static void _inorder_traversal_delete(SnapshotBST *bst, SnapshotNode *node, size_t *total_size) {
+static void _inorder_traversal_delete(SnapshotBST *bst, SnapshotNode *node) {
     if (bst == NULL || node == NULL) {
         return;
     }
-    _inorder_traversal_delete(bst, node->left, total_size);
-    SnapshotBSTDelete(bst, node->file->path, total_size);
-    _inorder_traversal_delete(bst, node->right, total_size);
+    _inorder_traversal_delete(bst, node->left);
+    SnapshotBSTDelete(bst, node->file->path);
+    _inorder_traversal_delete(bst, node->right);
 }
 
-void inorder_traversal_delete(SnapshotBST *target_bst, SnapshotBST *ref_bst,
-                              size_t *target_total_size) {
-    _inorder_traversal_delete(target_bst, ref_bst->root, target_total_size);
+void inorder_traversal_delete(SnapshotBST *target_bst, SnapshotBST *ref_bst) {
+    _inorder_traversal_delete(target_bst, ref_bst->root);
 }
 
-static void save_index_file_list(SnapshotBST *bst, size_t total_size) {
-    if (bst == NULL || total_size == 0) {
+static void save_index_file_list(SnapshotBST *bst) {
+    if (bst == NULL || bst->node_amount == 0) {
         return;
     }
     FILE *index_file = xfopen("index_list", "w");
 
-    char **path_list = xmalloc(sizeof(*path_list) * total_size);
+    char **path_list = xmalloc(sizeof(*path_list) * bst->node_amount);
 
     size_t idx = 0;
     inorder_traversal_to_path_list(&path_list, bst->root, &idx);
 
-    if (idx != total_size) {
+    if (idx != bst->node_amount) {
         ErrorCustomMsg("Error: save index file failed: path list size not match\n");
     }
     fprintf(index_file, "%ld\n", idx);
@@ -308,8 +341,8 @@ static void save_index_file_list(SnapshotBST *bst, size_t total_size) {
     xfree(path_list);
 }
 
-void save_index_dic(SnapshotBST *bst, size_t total_size) {
-    if (bst == NULL || total_size == 0) {
+void save_index_dic(SnapshotBST *bst) {
+    if (bst == NULL || bst->node_amount == 0) {
         return;
     }
 
@@ -337,10 +370,10 @@ void save_index_dic(SnapshotBST *bst, size_t total_size) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
     }
 
-    save_index_file_list(bst, total_size);
+    save_index_file_list(bst);
 }
 
-SnapshotBST *read_index_dic(size_t *total_size) {
+SnapshotBST *read_index_dic(SnapshotBST *leader_bst, const char *leader_id) {
     char org_dir[1024];
     if (getcwd(org_dir, sizeof(org_dir)) == NULL) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
@@ -353,7 +386,8 @@ SnapshotBST *read_index_dic(size_t *total_size) {
         return bst;
     }
 
-    fscanf(index_file, "%lu\n", total_size);
+    size_t total_size;
+    fscanf(index_file, "%lu\n", &total_size);
 
     if (total_size == 0) {
         SnapshotBST *bst = SnapshotBSTCreateEmpty();
@@ -361,19 +395,19 @@ SnapshotBST *read_index_dic(size_t *total_size) {
         return bst;
     }
 
-    char **path_list = xmalloc(sizeof(*path_list) * (*total_size));
+    char **path_list = xmalloc(sizeof(*path_list) * total_size);
 
     size_t count = 0;
-    char buffer[256];
+    char buffer[4096];
     while (fscanf(index_file, "%s\n", buffer) == 1) {
         if (access(buffer, F_OK) == -1) {
-            (*total_size)--;
+            total_size--;
         } else {
             path_list[count++] = str_dup(buffer);
         }
     }
 
-    SnapshotBST *bst = SnapshotBSTCreate(path_list, *total_size);
+    SnapshotBST *bst = SnapshotBSTCreate(path_list, total_size, leader_bst, leader_id);
 
     fclose(index_file);
 
@@ -385,4 +419,48 @@ SnapshotBST *read_index_dic(size_t *total_size) {
     chdir(org_dir);
 
     return bst;
+}
+
+SnapshotBST *read_leader_commit_BST(char **leader_id) {
+    *leader_id = load_leader();
+    if (*leader_id == NULL) {
+        return NULL;
+    }
+
+    char leader_dir[4096];
+    snprintf(leader_dir, sizeof(leader_dir), ".big/objects/%s/root", *leader_id);
+    if (chdir(leader_dir) == -1) {
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+    }
+
+    FILE *leader_commit_list = xfopen("../list", "r");
+
+    size_t total_size;
+    fscanf(leader_commit_list, "%lu\n", &total_size);
+
+    char **path_list = xmalloc(sizeof(*path_list) * total_size);
+
+    size_t count = 0;
+    char buffer[4096];
+    while (fscanf(leader_commit_list, "%s\n", buffer) == 1) {
+        if (access(buffer, F_OK) == -1) {
+            total_size--;
+        } else {
+            path_list[count++] = str_dup(buffer);
+        }
+    }
+
+    SnapshotBST *leader_bst = SnapshotBSTCreate(path_list, total_size, NULL, NULL);
+    fclose(leader_commit_list);
+    for (size_t i = 0; i < count; i++) {
+        xfree(path_list[i]);
+    }
+    xfree(path_list);
+
+    cd_to_project_root(NULL);
+    return leader_bst;
+}
+
+size_t amount_of_BST(SnapshotBST *bst) {
+    return bst->node_amount;
 }

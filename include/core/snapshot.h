@@ -1,10 +1,11 @@
 #ifndef SNAPSHOT_H
 #define SNAPSHOT_H
 
+#include <stdbool.h>
 #include <stdlib.h>
 
-#define FOUND 0
-#define NOT_FOUND -1
+#define MATCH false
+#define NOT_MATCH true
 
 typedef struct SnapshotNode SnapshotNode;
 
@@ -12,23 +13,30 @@ typedef struct SnapshotBST SnapshotBST;
 
 SnapshotBST *SnapshotBSTCreateEmpty();
 
-int SnapshotBSTInsert(SnapshotBST *bst, const char *path);
+void SnapshotBSTInsert(SnapshotBST *bst, const char *path, SnapshotBST *leader_bst,
+                       const char *leader_id);
 
-int SnapshotBSTDelete(SnapshotBST *bst, const char *target_path, size_t *total_size);
+bool SnapshotBST_Search_and_Compare(SnapshotBST *bst, const char *path, const char *content);
+
+void SnapshotBSTDelete(SnapshotBST *bst, const char *target_path);
 
 void SnapshotBSTDestory(SnapshotBST **bst);
 
-void process_path(SnapshotBST *bst, const char *root_path, size_t *list_length);
+void process_path(SnapshotBST *bst, const char *root_path, SnapshotBST *leader_bst,
+                  const char *leader_id);
 
-SnapshotBST *read_index_dic(size_t *total_size);
+SnapshotBST *read_index_dic(SnapshotBST *leader_bst, const char *leader_id);
 
-void save_index_dic(SnapshotBST *bst, size_t total_size);
+void save_index_dic(SnapshotBST *bst);
 
 void inorder_traversal_func(SnapshotBST *bst, void (*action)(SnapshotNode *));
 
 void inorder_traversal_print(SnapshotBST *bst, const char *msg, const char *color);
 
-void inorder_traversal_delete(SnapshotBST *target_bst, SnapshotBST *ref_bst,
-                              size_t *target_total_size);
+void inorder_traversal_delete(SnapshotBST *target_bst, SnapshotBST *ref_bst);
+
+SnapshotBST *read_leader_commit_BST(char **leader_id);
+
+size_t amount_of_BST(SnapshotBST *bst);
 
 #endif
