@@ -35,6 +35,5 @@ void cmd_commit(int argc, char *argv[]) {
 
     leader_update(new_commit);
 
-    remove(".big/index");
     CommitNodeFree(&new_commit);
 }

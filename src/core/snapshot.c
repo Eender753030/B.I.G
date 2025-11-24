@@ -46,9 +46,15 @@ static SnapshotNode *SnapshotNodeCreate(const char *path, SnapshotBST *leader_bs
     if (leader_bst != NULL && leader_id != NULL &&
         SnapshotBST_Search_and_Compare(leader_bst, path, content) == MATCH) {
         xfree(content);
-        char buffer[50];
-        snprintf(buffer, sizeof(buffer), "Point to commit: %s", leader_id);
-        new_node->file->ref.commit_id = str_dup(buffer);
+        SnapshotNode *point_node = SnapshotBSTSearch(leader_bst, path);
+        if (strncmp(point_node->file->ref.content, "Point_to_commit:", 16) == 0) {
+            new_node->file->ref.commit_id = str_dup(point_node->file->ref.commit_id);
+        } else {
+            char buffer[4096];
+            snprintf(buffer, sizeof(buffer), "Point_to_commit: .big/objects/%s/root/%s", leader_id,
+                     path);
+            new_node->file->ref.commit_id = str_dup(buffer);
+        }
         new_node->file->changed = false;
     } else {
         new_node->file->ref.content = content;
@@ -137,6 +143,33 @@ void SnapshotBSTInsert(SnapshotBST *bst, const char *path, SnapshotBST *leader_b
     }
 }
 
+static char *parse_commit_pointer(const char *content) {
+    if (strncmp(content, "Point_to_commit:", 16) == 0) {
+        char *commit_path = strchr(content, ' ') + 1;
+        return read_whole_file(commit_path);
+    }
+    return str_dup(content);
+}
+
+SnapshotNode *SnapshotBSTSearch(SnapshotBST *bst, const char *path) {
+    if (bst->root == NULL) {
+        return NULL;
+    }
+    SnapshotNode *current = bst->root;
+    int cmp_result;
+    while (current != NULL) {
+        cmp_result = strcmp(path, current->file->path);
+        if (cmp_result > 0) {
+            current = current->right;
+        } else if (cmp_result < 0) {
+            current = current->left;
+        } else {
+            return current;
+        }
+    }
+    return NULL;
+}
+
 bool SnapshotBST_Search_and_Compare(SnapshotBST *bst, const char *path, const char *content) {
     if (bst->root == NULL) {
         return NOT_MATCH;
@@ -150,7 +183,11 @@ bool SnapshotBST_Search_and_Compare(SnapshotBST *bst, const char *path, const ch
         } else if (cmp_result < 0) {
             current = current->left;
         } else {
-            if (strcmp(current->file->ref.content, content) == 0) {
+            char *commit_pointer_content = parse_commit_pointer(current->file->ref.content);
+            int content_cmp = strcmp(commit_pointer_content, content);
+            xfree(commit_pointer_content);
+
+            if (content_cmp == 0) {
                 return MATCH;
             }
             return NOT_MATCH;

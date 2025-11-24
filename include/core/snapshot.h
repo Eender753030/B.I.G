@@ -16,6 +16,8 @@ SnapshotBST *SnapshotBSTCreateEmpty();
 void SnapshotBSTInsert(SnapshotBST *bst, const char *path, SnapshotBST *leader_bst,
                        const char *leader_id);
 
+SnapshotNode *SnapshotBSTSearch(SnapshotBST *bst, const char *path);
+
 bool SnapshotBST_Search_and_Compare(SnapshotBST *bst, const char *path, const char *content);
 
 void SnapshotBSTDelete(SnapshotBST *bst, const char *target_path);
