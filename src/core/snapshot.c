@@ -2,6 +2,7 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,22 +15,37 @@
 #include "utils/memory.h"
 #include "utils/utils.h"
 
+typedef struct {
+    char *path;
+    bool changed;
+    union {
+        char *content;
+        char *commit_id;
+    } ref;
+} FileInfo;
+
 typedef struct SnapshotNode {
-    FileInfo *file;  // TODO: If file wasn't changed. Direct point to earlier commit's FileInfo
+    FileInfo *file;
     struct SnapshotNode *left;
     struct SnapshotNode *right;
 } SnapshotNode;
 
 struct SnapshotBST {
     SnapshotNode *root;
+    size_t node_amount;
 };
+
+// static void check_leader_commit() {
+//     // TODO: Check leader files and make unchanged file point to it.
+// }
 
 static SnapshotNode *SnapshotNodeCreate(const char *path) {
     SnapshotNode *new_node = xmalloc(sizeof(*new_node));
 
     new_node->file = xmalloc(sizeof(*(new_node->file)));
     new_node->file->path = str_dup(path);
-    new_node->file->content = read_whole_file(path);
+    new_node->file->ref.content = read_whole_file(path);  // TODO: Point to leader commit file
+    new_node->file->changed = false;
 
     new_node->left = NULL;
     new_node->right = NULL;
@@ -69,7 +85,7 @@ static void freeNode(SnapshotNode **node) {
     if (node == NULL || *node == NULL) {
         return;
     }
-    xfree((*node)->file->content);
+    xfree((*node)->file->ref.content);
     xfree((*node)->file->path);
     xfree((*node)->file);
     xfree((*node));
@@ -134,10 +150,10 @@ int SnapshotBSTDelete(SnapshotBST *bst, const char *target_path, size_t *total_s
             successor = successor->left;
         }
         xfree(current->file->path);
-        xfree(current->file->content);
+        xfree(current->file->ref.content);
 
         current->file->path = str_dup(successor->file->path);
-        current->file->content = str_dup(successor->file->content);
+        current->file->ref.content = str_dup(successor->file->ref.content);
 
         parent = successor_parent;
         current = successor;
@@ -238,17 +254,8 @@ void inorder_traversal_func(SnapshotBST *bst, void (*action)(SnapshotNode *)) {
     _inorder_traversal_func_recu(bst->root, action);
 }
 
-static void _inorder_traversal_print(SnapshotNode *node, const char *msg, const char *color) {
-    if (node == NULL) {
-        return;
-    }
-    _inorder_traversal_print(node->left, msg, color);
-    printf("%s%s%s\n" COLOR_END, color, msg, node->file->path);
-    _inorder_traversal_print(node->right, msg, color);
-}
-
-void inorder_traversal_print(SnapshotBST *bst, const char *msg, const char *color) {
-    _inorder_traversal_print(bst->root, msg, color);
+static void scan_and_create_files(SnapshotNode *node) {
+    mk_dir_and_file(node->file->path, node->file->ref.content);
 }
 
 static void _inorder_traversal_delete(SnapshotBST *bst, SnapshotNode *node, size_t *total_size) {
@@ -265,14 +272,11 @@ void inorder_traversal_delete(SnapshotBST *target_bst, SnapshotBST *ref_bst,
     _inorder_traversal_delete(target_bst, ref_bst->root, target_total_size);
 }
 
-void save_index_file(SnapshotBST *bst, size_t total_size) {
+static void save_index_file_list(SnapshotBST *bst, size_t total_size) {
     if (bst == NULL || total_size == 0) {
         return;
     }
-
-    cd_to_project_root(NULL);
-
-    FILE *index_file = xfopen(".big/index", "w");
+    FILE *index_file = xfopen("index_list", "w");
 
     char **path_list = xmalloc(sizeof(*path_list) * total_size);
 
@@ -291,14 +295,46 @@ void save_index_file(SnapshotBST *bst, size_t total_size) {
     xfree(path_list);
 }
 
-SnapshotBST *read_index_file(size_t *total_size) {
+void save_index_dic(SnapshotBST *bst, size_t total_size) {
+    if (bst == NULL || total_size == 0) {
+        return;
+    }
+
+    cd_to_project_root(NULL);
+
+    if (mkdir(".big/index", 0775) == -1) {
+        if (errno != EEXIST) {
+            ErrnoHandler(__func__, __FILE__, __LINE__);
+        }
+    }
+
+    if (mkdir(".big/index/root", 0775) == -1) {
+        if (errno != EEXIST) {
+            ErrnoHandler(__func__, __FILE__, __LINE__);
+        }
+    }
+
+    if (chdir(".big/index/root") == -1) {
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+    }
+
+    inorder_traversal_func(bst, scan_and_create_files);
+
+    if (chdir("..") == -1) {
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+    }
+
+    save_index_file_list(bst, total_size);
+}
+
+SnapshotBST *read_index_dic(size_t *total_size) {
     char org_dir[1024];
     if (getcwd(org_dir, sizeof(org_dir)) == NULL) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
     }
     cd_to_project_root(NULL);
 
-    FILE *index_file = fopen(".big/index", "r");
+    FILE *index_file = fopen(".big/index/index_list", "r");
     if (index_file == NULL) {
         SnapshotBST *bst = SnapshotBSTCreateEmpty();
         return bst;
@@ -336,8 +372,4 @@ SnapshotBST *read_index_file(size_t *total_size) {
     chdir(org_dir);
 
     return bst;
-}
-
-FileInfo *get_fileinfo(SnapshotNode *node) {
-    return node->file;
 }

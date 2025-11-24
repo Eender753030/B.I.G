@@ -1,6 +1,7 @@
 #include "commands/cmd_add.h"
 
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -40,7 +41,7 @@ static void process_dir_or_file(const char *path, size_t *total_size, SnapshotBS
 }
 
 void cmd_add(int argc, char *argv[]) {
-    if (check_init() == NOT_ININ) {
+    if (check_init() == NOT_INIT) {
         NotInitError();
     }
     if (argc < 2) {
@@ -61,7 +62,7 @@ void cmd_add(int argc, char *argv[]) {
 
     size_t total_size = 0;
 
-    SnapshotBST *bst = read_index_file(&total_size);
+    SnapshotBST *bst = read_index_dic(&total_size);
 
     struct stat file_stat;
     for (size_t i = 0; i < input_size; i++) {
@@ -73,8 +74,6 @@ void cmd_add(int argc, char *argv[]) {
         normalized_path = NULL;
     }
 
-    save_index_file(bst, total_size);
-
-    xfree(org_dir);
+    save_index_dic(bst, total_size);
     SnapshotBSTDestory(&bst);
 }
