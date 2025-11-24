@@ -258,6 +258,19 @@ static void scan_and_create_files(SnapshotNode *node) {
     mk_dir_and_file(node->file->path, node->file->ref.content);
 }
 
+static void _inorder_traversal_print(SnapshotNode *node, const char *msg, const char *color) {
+    if (node == NULL) {
+        return;
+    }
+    _inorder_traversal_print(node->left, msg, color);
+    printf("%s%s%s\n" COLOR_END, color, msg, node->file->path);
+    _inorder_traversal_print(node->right, msg, color);
+}
+
+void inorder_traversal_print(SnapshotBST *bst, const char *msg, const char *color) {
+    _inorder_traversal_print(bst->root, msg, color);
+}
+
 static void _inorder_traversal_delete(SnapshotBST *bst, SnapshotNode *node, size_t *total_size) {
     if (bst == NULL || node == NULL) {
         return;

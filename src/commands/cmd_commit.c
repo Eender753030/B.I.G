@@ -9,7 +9,7 @@
 #include "utils/utils.h"
 
 void cmd_commit(int argc, char *argv[]) {
-    if (check_init() == NOT_ININ)
+    if (check_init() == NOT_INIT)
         NotInitError();
 
     char *log_message;

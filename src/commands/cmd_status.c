@@ -11,7 +11,7 @@
 void cmd_status(int argc, char *argv[]) {
     UNUSED(argv);
 
-    if (check_init() == NOT_ININ) {
+    if (check_init() == NOT_INIT) {
         NotInitError();
     }
     if (argc > 1) {
@@ -20,7 +20,7 @@ void cmd_status(int argc, char *argv[]) {
     cd_to_project_root(NULL);
 
     size_t total_size_index = 0;
-    SnapshotBST *bst_index = read_index_file(&total_size_index);
+    SnapshotBST *bst_index = read_index_dic(&total_size_index);
 
     size_t total_size_dir = 0;
     SnapshotBST *bst_dir = SnapshotBSTCreateEmpty();

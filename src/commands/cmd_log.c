@@ -16,7 +16,7 @@ static inline void print_log(CommitNode *node) {
 }
 
 void cmd_log(int argc, char *argv[]) {
-    if (check_init() == NOT_ININ) {
+    if (check_init() == NOT_INIT) {
         NotInitError();
     }
     long amount;
@@ -40,24 +40,22 @@ void cmd_log(int argc, char *argv[]) {
     if (leader_id == NULL)
         ErrorCustomMsg("No commit\n");
 
-    CommitNode *leader_node = load_parent_info(leader_id);
-
-    CommitNode *current_node = leader_node;
+    CommitNode *leader_node;
     if (amount == ALL) {
-        while (current_node != NULL) {
-            print_log(current_node);
-            if (current_node->parent == NULL)
-                break;
-            current_node = current_node->parent[0];
-        }
+        leader_node = load_parent_info(leader_id, NULL);
     } else {
-        for (long i = 0; i < amount; i++) {
-            print_log(current_node);
-            if (current_node->parent == NULL)
-                break;
-            current_node = current_node->parent[0];
-        }
+        leader_node = load_parent_info(leader_id, &amount);
     }
 
-    CommitNodeFree(&leader_node);
+    CommitNode *current_node = leader_node;
+    while (current_node != NULL) {
+        print_log(current_node);
+        if (current_node->parent == NULL)
+            break;
+        current_node = current_node->parent;
+    }
+
+    if (leader_node != NULL) {
+        CommitNodeFree(&leader_node);
+    }
 }

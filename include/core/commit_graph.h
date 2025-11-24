@@ -6,17 +6,15 @@
 #include "core/snapshot.h"
 
 typedef struct CommitNode {
-    SnapshotBST *snapshot;
     char *log;
     char *datetime;
-    struct CommitNode **parent;
-    size_t parent_num;
+    struct CommitNode *parent;
     char *commit_id;
 } CommitNode;
 
 char *load_leader();
 
-CommitNode *load_parent_info(char *commit_id);
+CommitNode *load_parent_info(char *commit_id, long *limit_amount);
 
 CommitNode *CommitNodeCreate(char *log);
 
