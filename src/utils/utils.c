@@ -8,68 +8,89 @@
 #include <unistd.h>
 
 #include "utils/error_handle.h"
+#include "utils/memory.h"
 
 char *str_dup(const char *string) {
-    char *new_string = (char *)malloc(strlen(string) + 1);
-    if (new_string == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-
+    // Allocate memory: length of string + 1 for null terminator
+    char *new_string = xmalloc(strlen(string) + 1);
     strcpy(new_string, string);
-
     return new_string;
 }
 
 int check_init() {
-    char org_dir[1024];
-    if (getcwd(org_dir, 1024) == NULL)
+    char org_dir[4096];
+
+    // Save current directory to return later
+    if (getcwd(org_dir, 4096) == NULL) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
+    }
+    char cwd[4096];
 
-    char cwd[1024];
-
+    // Traverse up the directory tree until ".big" is found or root is reached
     do {
-        getcwd(cwd, 1024);
-        if (access(".big", F_OK) != -1) {
-            chdir(org_dir);
-            return 0;
-        }
-        chdir("..");
-    } while (strncmp(cwd, "/", 2));
+        getcwd(cwd, 4096);  // Get current directory
 
-    return -1;
+        // Check if ".big" exists in the current level
+        if (access(".big", F_OK) != -1) {
+            chdir(org_dir);  // Return to original directory before exiting
+            return INITED;
+        }
+        chdir("..");  // Move to parent directory
+    } while (strncmp(cwd, "/", 2));  // Stop if we hit the root directory "/"
+
+    return NOT_INIT;
 }
 
 void cd_to_project_root(char **org_dir) {
+    // If the caller requested the original path, save it first
     if (org_dir != NULL) {
-        *org_dir = (char *)malloc(1024);
-        if (*org_dir == NULL || getcwd(*org_dir, 1024) == NULL)
+        char buffer[4096];
+        if (getcwd(buffer, 4096) == NULL) {
             ErrnoHandler(__func__, __FILE__, __LINE__);
+        }
+        *org_dir = str_dup(buffer);
+        if (*org_dir == NULL) {
+            ErrnoHandler(__func__, __FILE__, __LINE__);
+        }
     }
 
-    char current_dir[1024];
+    char current_dir[4096];
+
+    // Keep moving up ("..") until we find the ".big" folder
     while (access(".big", F_OK) == -1) {
-        if (getcwd(current_dir, 1024) == NULL)
+        if (getcwd(current_dir, 4096) == NULL) {
             ErrnoHandler(__func__, __FILE__, __LINE__);
+        }
 
-        if (strncmp(current_dir, "/", 2) == 0)
+        // Safety check: If we hit root "/" and still haven't found .big, it's an error
+        if (strncmp(current_dir, "/", 2) == 0) {
             ErrorCustomMsg("Error: can not cd to outside the root directory\n");
-
-        if (chdir("..") == -1)
+        }
+        if (chdir("..") == -1) {
             ErrnoHandler(__func__, __FILE__, __LINE__);
+        }
+        // Now the CWD (Current Working Directory) is the project root
     }
 }
 
-unsigned long hash_function(char *string) {
+/* * DJB2 Hash Algorithm
+ * A simple and effective string hash function.
+ * Magic number 5381 and multiplier 33 (<<5 + 1) provide good distribution.
+ */
+unsigned long hash_function(const char *string) {
     unsigned long hash = 5381;
     for (; *string != '\0'; string++) {
-        hash = ((hash << 5) + hash) + *string;
+        hash = ((hash << 5) + hash) + (unsigned long)(*string);
     }
     return hash;
 }
 
 char *hash_to_string(unsigned long hash) {
-    char *hex_str = (char *)malloc(17);
-    if (hex_str == NULL)
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-    sprintf(hex_str, "%lx", hash);
+    // Size needs to be enough for hex representation + null terminator
+    // sizeof(hash) * 2 covers 2 hex chars per byte.
+    size_t size = sizeof(hash) * 2 + 1;
+    char *hex_str = xmalloc(size);
+
+    snprintf(hex_str, size, "%lx", hash);
     return hex_str;
 }

@@ -1,67 +1,45 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "commands/cmd.h"
 #include "commands/cmd_add.h"
 #include "commands/cmd_commit.h"
 #include "commands/cmd_init.h"
 #include "commands/cmd_log.h"
+#include "commands/cmd_status.h"
 #include "utils/error_handle.h"
 #include "utils/utils.h"
 
+/**
+ * @brief Command Table.
+ * Maps command names to their handler functions.
+ * Ends with {NULL, NULL} as a sentinel.
+ */
+static const Command commands[] = {{"init", cmd_init},     {"add", cmd_add},
+                                   {"commit", cmd_commit}, {"log", cmd_log},
+                                   {"status", cmd_status}, {NULL, NULL}};
+
+/**
+ * @brief Main entry point. Dispatches subcommands.
+ */
 int main(int argc, char **argv) {
-    if (argc < 2)
-        InputError();
+    if (argc < 2) {
+        InputError();  // Show usage if no command provided
+    }
 
-    if (strncmp(argv[1], "init", 5) == 0)
-        cmd_init();
+    const char *input_cmd = argv[1];
 
-    else if (strncmp(argv[1], "add", 4) == 0) {
-        if (check_init() == -1)
-            NotInitError();
-        if (argc < 3) {
-            ErrorCustomMsg(
-                "Usage: big add <filename or directory> <...>\n"
-                "Use 'big add .' in root of project directory to add whole\n");
+    // Iterate through commands until sentinel (NULL) is reached
+    for (int num_of_cmd = 0; commands[num_of_cmd].cmd_name != NULL; num_of_cmd++) {
+        if (strcmp(input_cmd, commands[num_of_cmd].cmd_name) == 0) {
+            // Execute command.
+            // Pass (argc - 1) and (argv + 1) to skip the program name.
+            commands[num_of_cmd].cmd(argc - 1, argv + 1);
+            return EXIT_SUCCESS;
         }
-        cmd_add((size_t)argc - 2, (const char **)argv + 2);
+    }
 
-    } else if (strncmp(argv[1], "commit", 7) == 0) {
-        if (check_init() == -1)
-            NotInitError();
-        if (argc == 2)
-            cmd_commit(NULL);
-        else {
-            if (strncmp(argv[2], "-m", 3) == 0 && argc == 4)
-                cmd_commit(argv[3]);
-            else
-                ErrorCustomMsg("Usage: big commit [-m \"<log message>\"]\n");
-        }
-
-    } else if (strncmp(argv[1], "log", 4) == 0) {
-        if (check_init() == -1)
-            NotInitError();
-        if (argc == 2)
-            cmd_log(NULL);
-        else {
-            for (int i = 2; i < argc; i++) {
-                if (*argv[i] == '-') {
-                    char *c = argv[i] + 1;
-                    if (*c >= '0' && *c <= '9') {
-                        for (; *c != '\0'; c++) {
-                            if (*c < '0' || *c > '9')
-                                ErrorCustomMsg("'%s' is not a positive integer\n", argv[i] + 1);
-                        }
-                        long amount = strtol(argv[i] + 1, NULL, 10);
-                        cmd_log(&amount);
-                    } else
-                        ErrorCustomMsg("Usage: big log [-<amount>]\n");
-                } else
-                    ErrorCustomMsg("Usage: big log [-<amount>]\n");
-            }
-        }
-
-    } else
-        InputError();
-
-    return EXIT_SUCCESS;
+    InputError();  // Command not found
+    return EXIT_FAILURE;
 }

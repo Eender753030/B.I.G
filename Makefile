@@ -5,7 +5,8 @@ INC_DIR = include
 OBJ_DIR = build
 BIN_DIR = bin
 
-CFLAGS = -Wall -g -I${INC_DIR}
+CFLAGS = -Wall -Wextra -Wconversion -Wpedantic -Werror -g -fsanitize=address -I${INC_DIR}
+LFLAGS = -fsanitize=address
 
 TARGET = ${BIN_DIR}/big
 
@@ -16,7 +17,7 @@ all: ${TARGET}
 
 ${TARGET}: ${OBJS}
 	@mkdir -p ${BIN_DIR}
-	${CC} ${OBJS} -o ${TARGET}
+	${CC} ${LFLAGS} ${OBJS} -o ${TARGET}
 	@echo "Link succeeded -> $@"
 
 ${OBJ_DIR}/%.o: ${SRC_DIR}/%.c

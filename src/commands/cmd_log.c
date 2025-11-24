@@ -4,33 +4,58 @@
 #include <stdlib.h>
 
 #include "core/commit_graph.h"
+#include "utils/color.h"
 #include "utils/error_handle.h"
+#include "utils/utils.h"
 
-void cmd_log(const long *amount) {
+#define ALL -1
+
+static inline void print_log(CommitNode *node) {
+    printf(COLOR_BROWN "Commit: %s\t" COLOR_END "Date: %s\tLog: \"%s\"\n", node->commit_id,
+           node->datetime, node->log);
+}
+
+void cmd_log(int argc, char *argv[]) {
+    if (check_init() == NOT_INIT) {
+        NotInitError();
+    }
+    long amount;
+
+    if (argc == 1) {
+        amount = ALL;
+    } else if (argc == 2) {
+        char *c = argv[1] + 1;
+        if (*argv[1] == '-' && *c >= '0' && *c <= '9') {
+            for (; *c != '\0'; c++) {
+                if (*c < '0' || *c > '9')
+                    ErrorCustomMsg("'%s' is not a positive integer\n", argv[1] + 1);
+            }
+            amount = strtol(argv[1] + 1, NULL, 10);
+        } else
+            ErrorCustomMsg("Usage: big log [-<amount>]\n");
+    } else
+        ErrorCustomMsg("Usage: big log [-<amount>]\n");
+
     char *leader_id = load_leader();
     if (leader_id == NULL)
         ErrorCustomMsg("No commit\n");
 
-    CommitNode *leader_node = load_parent_info(leader_id);
-
-    CommitNode *current_node = leader_node;
-    if (amount == NULL) {
-        while (current_node != NULL) {
-            printf("Commit: %s  Date: %s  Log: %s\n", current_node->commit_id,
-                   current_node->datetime, current_node->log);
-            if (current_node->parent == NULL)
-                break;
-            current_node = current_node->parent[0];
-        }
+    CommitNode *leader_node;
+    if (amount == ALL) {
+        leader_node = load_parent_info(leader_id, NULL);
     } else {
-        for (long i = 0; i < *amount; i++) {
-            printf("Commit: %s  Date: %s  Log: %s\n", current_node->commit_id,
-                   current_node->datetime, current_node->log);
-            if (current_node->parent == NULL)
-                break;
-            current_node = current_node->parent[0];
-        }
+        leader_node = load_parent_info(leader_id, &amount);
     }
 
-    CommitNodeFree(&leader_node);
+    CommitNode *current_node = leader_node;
+    while (current_node != NULL) {
+        print_log(current_node);
+        if (current_node->parent == NULL)
+            break;
+        current_node = current_node->parent;
+    }
+
+    if (leader_node != NULL) {
+        CommitNodeFree(&leader_node);
+    }
 }
