@@ -467,13 +467,14 @@ void save_index_dic(SnapshotBST *bst) {
 }
 
 SnapshotBST *read_index_dic(SnapshotBST *leader_bst, const char *leader_id) {
-    char org_dir[1024];
-    if (getcwd(org_dir, sizeof(org_dir)) == NULL) {
+    char *org_dir;
+    cd_to_project_root(&org_dir);
+
+    if (chdir(".big/index/root") == -1) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
     }
-    cd_to_project_root(NULL);
 
-    FILE *index_file = fopen(".big/index/index_list", "r");
+    FILE *index_file = fopen("../index_list", "r");
     if (index_file == NULL) {
         SnapshotBST *bst = SnapshotBSTCreateEmpty();
         return bst;
@@ -502,9 +503,6 @@ SnapshotBST *read_index_dic(SnapshotBST *leader_bst, const char *leader_id) {
 
     fclose(index_file);
 
-    if (chdir(".big/index/root") == -1) {
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-    }
     SnapshotBST *bst = SnapshotBSTCreate(path_list, total_size, leader_bst, leader_id);
 
     for (size_t i = 0; i < count; i++) {
@@ -513,7 +511,7 @@ SnapshotBST *read_index_dic(SnapshotBST *leader_bst, const char *leader_id) {
     xfree(path_list);
 
     chdir(org_dir);
-
+    xfree(org_dir);
     return bst;
 }
 
@@ -562,6 +560,10 @@ size_t amount_of_BST(SnapshotBST *bst) {
 }
 
 void path_and_content_of_node(SnapshotNode *node, char **path, char **content) {
-    *path = node->file->path;
-    *content = node->file->ref.content;
+    if (path != NULL) {
+        *path = node->file->path;
+    }
+    if (content != NULL) {
+        *content = node->file->ref.content;
+    }
 }

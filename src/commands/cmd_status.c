@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "core/snapshot.h"
 #include "utils/color.h"
@@ -15,6 +16,22 @@ void leader_cmp_index(const char *path, int result) {
     }
     printf(COLOR_GREEN "\t%s:    %s\n" COLOR_END, (result == NOT_FOUND) ? "New File" : "Modified",
            path);
+}
+
+void index_cmp_workdir(const char *path, int result) {
+    if (result == MATCH) {
+        return;
+    }
+    printf(COLOR_RED "\t%s:    %s\n" COLOR_END, (result == NOT_FOUND) ? "Untracked" : "Modified",
+           path);
+}
+
+void check_workdir_exist(SnapshotNode *node) {
+    char *path;
+    path_and_content_of_node(node, &path, NULL);
+    if (access(path, F_OK) != 0) {
+        printf(COLOR_RED "\t%s:    %s\n" COLOR_END, "Deleted", path);
+    }
 }
 
 void cmd_status(int argc, char *argv[]) {
@@ -41,7 +58,13 @@ void cmd_status(int argc, char *argv[]) {
         compare_two_trees(bst_leader, bst_index, leader_cmp_index);
         puts("");
     }
+    if (amount_of_BST(bst_index) != 0 && amount_of_BST(bst_dir) != 0) {
+        printf("\nNot in index:\n");
+        compare_two_trees(bst_index, bst_dir, index_cmp_workdir);
 
+        inorder_traversal_func(bst_index, check_workdir_exist);
+        puts("");
+    }
     xfree(leader_commit_id);
     SnapshotBSTDestory(&bst_dir);
     SnapshotBSTDestory(&bst_index);
