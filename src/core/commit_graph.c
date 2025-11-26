@@ -202,11 +202,12 @@ void save_object_file(CommitNode *node) {
     char *list_file_content = read_whole_file(".big/index/index_list");
     char *leader_commit_id;
     SnapshotBST *bst_leader = read_leader_commit_BST(&leader_commit_id);
-    SnapshotBST *snapshot = read_index_dic(bst_leader, leader_commit_id);
+    SnapshotBST *cmp_snapshot = read_index_dic(NULL, NULL);
 
-    if (bst_leader != NULL && is_same_tree(bst_leader, snapshot) == MATCH) {
+    if (bst_leader != NULL && is_same_tree(bst_leader, cmp_snapshot) == MATCH) {
         ErrorCustomMsg("Error: Nothing to commit\n");
     }
+    SnapshotBSTDestory(&cmp_snapshot);
 
     if (chdir(objects_dir) == -1) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
@@ -252,6 +253,7 @@ void save_object_file(CommitNode *node) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
     }
 
+    SnapshotBST *snapshot = read_index_dic(bst_leader, leader_commit_id);
     inorder_traversal_func(snapshot, scan_and_make);
 
     xfree(commit_dir);
