@@ -138,6 +138,13 @@ void SnapshotBSTInsert(SnapshotBST *bst, const char *path, SnapshotBST *leader_b
             current = current->left;
 
         } else {
+            char *added_content = read_whole_file(path);
+            if (strcmp(current->file->ref.content, added_content) != 0) {
+                xfree(current->file->ref.content);
+                current->file->ref.content = added_content;
+                return;
+            }
+            xfree(added_content);
             return;
         }
     }
@@ -478,9 +485,12 @@ SnapshotBST *read_index_dic(SnapshotBST *leader_bst, const char *leader_id) {
         }
     }
 
-    SnapshotBST *bst = SnapshotBSTCreate(path_list, total_size, leader_bst, leader_id);
-
     fclose(index_file);
+
+    if (chdir(".big/index/root") == -1) {
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+    }
+    SnapshotBST *bst = SnapshotBSTCreate(path_list, total_size, leader_bst, leader_id);
 
     for (size_t i = 0; i < count; i++) {
         xfree(path_list[i]);
