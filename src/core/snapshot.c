@@ -152,8 +152,13 @@ void SnapshotBSTInsert(SnapshotBST *bst, const char *path, SnapshotBST *leader_b
 
 static char *parse_commit_pointer(const char *content) {
     if (strncmp(content, "Point_to_commit:", 16) == 0) {
+        char *org_dir;
+        cd_to_project_root(&org_dir);
         char *commit_path = strchr(content, ' ') + 1;
-        return read_whole_file(commit_path);
+        char *org_content = read_whole_file(commit_path);
+        chdir(org_dir);
+        xfree(org_dir);
+        return org_content;
     }
     return str_dup(content);
 }
@@ -384,12 +389,22 @@ static int _is_same_tree(SnapshotNode *node1, SnapshotNode *node2) {
     if (node1 == NULL || node2 == NULL) {
         return NOT_MATCH;
     }
-    if (strcmp(node1->file->path, node2->file->path) != 0 ||
-        strcmp(node1->file->ref.content, node2->file->ref.content) != 0) {
+    if (strcmp(node1->file->path, node2->file->path) != 0) {
         return NOT_MATCH;
     }
-    return _is_same_tree(node1->left, node2->left);
-    return _is_same_tree(node1->right, node2->right);
+    char *node1_content = parse_commit_pointer(node1->file->ref.content);
+    char *node2_content = parse_commit_pointer(node2->file->ref.content);
+    int content_cmp_result = strcmp(node1_content, node2_content);
+    xfree(node1_content);
+    xfree(node2_content);
+    if (content_cmp_result != 0) {
+        return NOT_MATCH;
+    }
+    if (_is_same_tree(node1->left, node2->left) == MATCH &&
+        _is_same_tree(node1->right, node2->right) == MATCH) {
+        return MATCH;
+    }
+    return NOT_MATCH;
 }
 
 int is_same_tree(SnapshotBST *bst1, SnapshotBST *bst2) {
