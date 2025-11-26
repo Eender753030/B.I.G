@@ -65,9 +65,6 @@ void cmd_add(int argc, char *argv[]) {
             remove(index_dir);
             SnapshotBSTDelete(bst, root_path_list[i]);
             continue;
-        } else {
-            ErrorCustomMsg("Error: '%s' did not match to any file or directory.\n",
-                           root_path_list[i]);
         }
         char *normalized_path = relative_path_calc(org_dir, root_path_list[i]);
 
