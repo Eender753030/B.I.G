@@ -1,6 +1,7 @@
 #include "utils/utils.h"
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -78,19 +79,19 @@ void cd_to_project_root(char **org_dir) {
  * Magic number 5381 and multiplier 33 (<<5 + 1) provide good distribution.
  */
 unsigned long hash_function(const char *string) {
-    unsigned long hash = 5381;
+    uint64_t hash = 5381;
     for (; *string != '\0'; string++) {
-        hash = ((hash << 5) + hash) + (unsigned long)(*string);
+        hash = ((hash << 5) + hash) + (uint64_t)(*string);
     }
     return hash;
 }
 
-char *hash_to_string(unsigned long hash) {
+char *hash_to_string(uint64_t hash) {
     // Size needs to be enough for hex representation + null terminator
     // sizeof(hash) * 2 covers 2 hex chars per byte.
-    size_t size = sizeof(hash) * 2 + 1;
+    uint64_t size = sizeof(hash) * 2 + 1;
     char *hex_str = xmalloc(size);
 
-    snprintf(hex_str, size, "%lx", hash);
+    snprintf(hex_str, size, "%llx", (unsigned long long)hash);
     return hex_str;
 }
