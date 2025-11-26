@@ -14,10 +14,6 @@
 #include "utils/utils.h"
 
 static void check_add_files(const char *path) {
-    if (access(path, F_OK) == -1) {
-        ErrorCustomMsg("Error: '%s' did not match to any file or directory.\n", path);
-    }
-
     if (access(".big", F_OK) == 0 && strncmp(path, "..", 3) == 0) {
         ErrorCustomMsg("Error: '..' is outside project directory.\n");
     }
@@ -59,26 +55,30 @@ void cmd_add(int argc, char *argv[]) {
     char *org_dir;
     cd_to_project_root(&org_dir);
 
-    char *leader_id;
-    SnapshotBST *leader_bst = read_leader_commit_BST(&leader_id);
-
-    SnapshotBST *bst = read_index_dic(leader_bst, leader_id);
+    SnapshotBST *bst = read_index_dic(NULL, NULL);
 
     struct stat file_stat;
     for (size_t i = 0; i < input_size; i++) {
+        char index_dir[4096];
+        snprintf(index_dir, sizeof(index_dir), ".big/index/root/%s", root_path_list[i]);
+        if (access(index_dir, F_OK) == 0 && access(root_path_list[i], F_OK) != 0) {
+            remove(index_dir);
+            SnapshotBSTDelete(bst, root_path_list[i]);
+            continue;
+        }
         char *normalized_path = relative_path_calc(org_dir, root_path_list[i]);
 
-        process_dir_or_file(normalized_path, bst, &file_stat, leader_bst, leader_id);
-
+        if (access(normalized_path, F_OK) == 0) {
+            process_dir_or_file(normalized_path, bst, &file_stat, NULL, NULL);
+        } else {
+            ErrorCustomMsg("Error: '%s' did not match to any file or directory.\n",
+                           root_path_list[i]);
+        }
         free(normalized_path);
         normalized_path = NULL;
     }
 
     save_index_dic(bst);
-    if (leader_bst != NULL) {
-        xfree(leader_id);
-        SnapshotBSTDestory(&leader_bst);
-    }
     xfree(org_dir);
     SnapshotBSTDestory(&bst);
 }

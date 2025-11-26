@@ -138,6 +138,13 @@ void SnapshotBSTInsert(SnapshotBST *bst, const char *path, SnapshotBST *leader_b
             current = current->left;
 
         } else {
+            char *added_content = read_whole_file(path);
+            if (strcmp(current->file->ref.content, added_content) != 0) {
+                xfree(current->file->ref.content);
+                current->file->ref.content = added_content;
+                return;
+            }
+            xfree(added_content);
             return;
         }
     }
@@ -145,8 +152,13 @@ void SnapshotBSTInsert(SnapshotBST *bst, const char *path, SnapshotBST *leader_b
 
 static char *parse_commit_pointer(const char *content) {
     if (strncmp(content, "Point_to_commit:", 16) == 0) {
+        char *org_dir;
+        cd_to_project_root(&org_dir);
         char *commit_path = strchr(content, ' ') + 1;
-        return read_whole_file(commit_path);
+        char *org_content = read_whole_file(commit_path);
+        chdir(org_dir);
+        xfree(org_dir);
+        return org_content;
     }
     return str_dup(content);
 }
@@ -170,9 +182,9 @@ SnapshotNode *SnapshotBSTSearch(SnapshotBST *bst, const char *path) {
     return NULL;
 }
 
-bool SnapshotBST_Search_and_Compare(SnapshotBST *bst, const char *path, const char *content) {
+int SnapshotBST_Search_and_Compare(SnapshotBST *bst, const char *path, const char *content) {
     if (bst->root == NULL) {
-        return NOT_MATCH;
+        return NOT_FOUND;
     }
     SnapshotNode *current = bst->root;
     int cmp_result;
@@ -186,14 +198,13 @@ bool SnapshotBST_Search_and_Compare(SnapshotBST *bst, const char *path, const ch
             char *commit_pointer_content = parse_commit_pointer(current->file->ref.content);
             int content_cmp = strcmp(commit_pointer_content, content);
             xfree(commit_pointer_content);
-
             if (content_cmp == 0) {
                 return MATCH;
             }
             return NOT_MATCH;
         }
     }
-    return NOT_MATCH;
+    return NOT_FOUND;
 }
 
 void SnapshotBSTDelete(SnapshotBST *bst, const char *target_path) {
@@ -355,6 +366,51 @@ void inorder_traversal_delete(SnapshotBST *target_bst, SnapshotBST *ref_bst) {
     _inorder_traversal_delete(target_bst, ref_bst->root);
 }
 
+static void _inorder_traversal_search_and_compare(SnapshotBST *bst, SnapshotNode *node,
+                                                  void (*action)(const char *, int)) {
+    if (bst == NULL || node == NULL) {
+        return;
+    }
+    _inorder_traversal_search_and_compare(bst, node->left, action);
+    int result = SnapshotBST_Search_and_Compare(bst, node->file->path, node->file->ref.content);
+    action(node->file->path, result);
+    _inorder_traversal_search_and_compare(bst, node->right, action);
+}
+
+void compare_two_trees(SnapshotBST *main_bst, SnapshotBST *ref_bst,
+                       void (*action)(const char *, int)) {
+    _inorder_traversal_search_and_compare(main_bst, ref_bst->root, action);
+}
+
+static int _is_same_tree(SnapshotNode *node1, SnapshotNode *node2) {
+    if (node1 == NULL && node2 == NULL) {
+        return MATCH;
+    }
+    if (node1 == NULL || node2 == NULL) {
+        return NOT_MATCH;
+    }
+    if (strcmp(node1->file->path, node2->file->path) != 0) {
+        return NOT_MATCH;
+    }
+    char *node1_content = parse_commit_pointer(node1->file->ref.content);
+    char *node2_content = parse_commit_pointer(node2->file->ref.content);
+    int content_cmp_result = strcmp(node1_content, node2_content);
+    xfree(node1_content);
+    xfree(node2_content);
+    if (content_cmp_result != 0) {
+        return NOT_MATCH;
+    }
+    if (_is_same_tree(node1->left, node2->left) == MATCH &&
+        _is_same_tree(node1->right, node2->right) == MATCH) {
+        return MATCH;
+    }
+    return NOT_MATCH;
+}
+
+int is_same_tree(SnapshotBST *bst1, SnapshotBST *bst2) {
+    return _is_same_tree(bst1->root, bst2->root);
+}
+
 static void save_index_file_list(SnapshotBST *bst) {
     if (bst == NULL || bst->node_amount == 0) {
         return;
@@ -411,13 +467,14 @@ void save_index_dic(SnapshotBST *bst) {
 }
 
 SnapshotBST *read_index_dic(SnapshotBST *leader_bst, const char *leader_id) {
-    char org_dir[1024];
-    if (getcwd(org_dir, sizeof(org_dir)) == NULL) {
+    char *org_dir;
+    cd_to_project_root(&org_dir);
+
+    if (chdir(".big/index/root") == -1) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
     }
-    cd_to_project_root(NULL);
 
-    FILE *index_file = fopen(".big/index/index_list", "r");
+    FILE *index_file = fopen("../index_list", "r");
     if (index_file == NULL) {
         SnapshotBST *bst = SnapshotBSTCreateEmpty();
         return bst;
@@ -444,9 +501,9 @@ SnapshotBST *read_index_dic(SnapshotBST *leader_bst, const char *leader_id) {
         }
     }
 
-    SnapshotBST *bst = SnapshotBSTCreate(path_list, total_size, leader_bst, leader_id);
-
     fclose(index_file);
+
+    SnapshotBST *bst = SnapshotBSTCreate(path_list, total_size, leader_bst, leader_id);
 
     for (size_t i = 0; i < count; i++) {
         xfree(path_list[i]);
@@ -454,7 +511,7 @@ SnapshotBST *read_index_dic(SnapshotBST *leader_bst, const char *leader_id) {
     xfree(path_list);
 
     chdir(org_dir);
-
+    xfree(org_dir);
     return bst;
 }
 
@@ -500,4 +557,13 @@ SnapshotBST *read_leader_commit_BST(char **leader_id) {
 
 size_t amount_of_BST(SnapshotBST *bst) {
     return bst->node_amount;
+}
+
+void path_and_content_of_node(SnapshotNode *node, char **path, char **content) {
+    if (path != NULL) {
+        *path = node->file->path;
+    }
+    if (content != NULL) {
+        *content = node->file->ref.content;
+    }
 }
