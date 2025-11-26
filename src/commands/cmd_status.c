@@ -18,6 +18,16 @@ void leader_cmp_index(const char *path, int result) {
            path);
 }
 
+void check_index_exist(SnapshotNode *node) {
+    char *path;
+    char index_path[4096];
+    path_and_content_of_node(node, &path, NULL);
+    snprintf(index_path, sizeof(index_path), ".big/index/root/%s", path);
+    if (access(index_path, F_OK) != 0) {
+        printf(COLOR_GREEN "\t%s:    %s\n" COLOR_END, "Deleted", path);
+    }
+}
+
 void index_cmp_workdir(const char *path, int result) {
     if (result == MATCH) {
         return;
@@ -56,8 +66,10 @@ void cmd_status(int argc, char *argv[]) {
     if (amount_of_BST(bst_index) != 0 && bst_leader != NULL) {
         printf("\nReady to commit:\n");
         compare_two_trees(bst_leader, bst_index, leader_cmp_index);
+        inorder_traversal_func(bst_leader, check_index_exist);
         puts("");
     }
+
     if (amount_of_BST(bst_index) != 0 && amount_of_BST(bst_dir) != 0) {
         printf("\nNot in index:\n");
         compare_two_trees(bst_index, bst_dir, index_cmp_workdir);
