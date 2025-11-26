@@ -59,26 +59,19 @@ void cmd_add(int argc, char *argv[]) {
     char *org_dir;
     cd_to_project_root(&org_dir);
 
-    char *leader_id;
-    SnapshotBST *leader_bst = read_leader_commit_BST(&leader_id);
-
-    SnapshotBST *bst = read_index_dic(leader_bst, leader_id);
+    SnapshotBST *bst = read_index_dic(NULL, NULL);
 
     struct stat file_stat;
     for (size_t i = 0; i < input_size; i++) {
         char *normalized_path = relative_path_calc(org_dir, root_path_list[i]);
 
-        process_dir_or_file(normalized_path, bst, &file_stat, leader_bst, leader_id);
+        process_dir_or_file(normalized_path, bst, &file_stat, NULL, NULL);
 
         free(normalized_path);
         normalized_path = NULL;
     }
 
     save_index_dic(bst);
-    if (leader_bst != NULL) {
-        xfree(leader_id);
-        SnapshotBSTDestory(&leader_bst);
-    }
     xfree(org_dir);
     SnapshotBSTDestory(&bst);
 }

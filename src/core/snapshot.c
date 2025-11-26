@@ -170,9 +170,9 @@ SnapshotNode *SnapshotBSTSearch(SnapshotBST *bst, const char *path) {
     return NULL;
 }
 
-bool SnapshotBST_Search_and_Compare(SnapshotBST *bst, const char *path, const char *content) {
+int SnapshotBST_Search_and_Compare(SnapshotBST *bst, const char *path, const char *content) {
     if (bst->root == NULL) {
-        return NOT_MATCH;
+        return NOT_FOUND;
     }
     SnapshotNode *current = bst->root;
     int cmp_result;
@@ -186,14 +186,13 @@ bool SnapshotBST_Search_and_Compare(SnapshotBST *bst, const char *path, const ch
             char *commit_pointer_content = parse_commit_pointer(current->file->ref.content);
             int content_cmp = strcmp(commit_pointer_content, content);
             xfree(commit_pointer_content);
-
             if (content_cmp == 0) {
                 return MATCH;
             }
             return NOT_MATCH;
         }
     }
-    return NOT_MATCH;
+    return NOT_FOUND;
 }
 
 void SnapshotBSTDelete(SnapshotBST *bst, const char *target_path) {
@@ -353,6 +352,30 @@ static void _inorder_traversal_delete(SnapshotBST *bst, SnapshotNode *node) {
 
 void inorder_traversal_delete(SnapshotBST *target_bst, SnapshotBST *ref_bst) {
     _inorder_traversal_delete(target_bst, ref_bst->root);
+}
+
+void compare_two_trees(SnapshotBST *main_bst, SnapshotBST *ref_bst,
+                       void (*action)(const char *, int)) {
+    _inorder_traversal_search_and_compare(main_bst, ref_bst->root, action);
+}
+
+static int _is_same_tree(SnapshotNode *node1, SnapshotNode *node2) {
+    if (node1 == NULL && node2 == NULL) {
+        return MATCH;
+    }
+    if (node1 == NULL || node2 == NULL) {
+        return NOT_MATCH;
+    }
+    if (strcmp(node1->file->path, node2->file->path) != 0 ||
+        strcmp(node1->file->ref.content, node2->file->ref.content) != 0) {
+        return NOT_MATCH;
+    }
+    return _is_same_tree(node1->left, node2->left);
+    return _is_same_tree(node1->right, node2->right);
+}
+
+int is_same_tree(SnapshotBST *bst1, SnapshotBST *bst2) {
+    return _is_same_tree(bst1->root, bst2->root);
 }
 
 static void save_index_file_list(SnapshotBST *bst) {

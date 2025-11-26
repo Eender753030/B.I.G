@@ -186,11 +186,26 @@ char *commit_log_insert(char *log_message) {
     return str_dup(log_message);
 }
 
+static void scan_and_make(SnapshotNode *node) {
+    char *path, *content;
+    path_and_content_of_node(node, &path, &content);
+    mk_dir_and_file(path, content);
+}
+
 void save_object_file(CommitNode *node) {
     if (mkdir(objects_dir, 0775) == -1) {
         if (errno != EEXIST) {
             ErrnoHandler(__func__, __FILE__, __LINE__);
         }
+    }
+
+    char *list_file_content = read_whole_file(".big/index/index_list");
+    char *leader_commit_id;
+    SnapshotBST *bst_leader = read_leader_commit_BST(&leader_commit_id);
+    SnapshotBST *snapshot = read_index_dic(bst_leader, leader_commit_id);
+
+    if (bst_leader != NULL && is_same_tree(bst_leader, snapshot) == MATCH) {
+        ErrorCustomMsg("Error: Nothing to commit\n");
     }
 
     if (chdir(objects_dir) == -1) {
@@ -212,8 +227,9 @@ void save_object_file(CommitNode *node) {
 
     node->commit_id = str_dup(commit_dir);
 
-    if (rename("../index", commit_dir) == -1 || chdir(commit_dir) == -1 ||
-        rename("index_list", "list") == -1) {
+    char buffer[4096];
+    snprintf(buffer, sizeof(buffer), "%s/root", commit_dir);
+    if (mkdir(commit_dir, 0775) == -1 || chdir(commit_dir) == -1) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
     }
 
@@ -228,11 +244,21 @@ void save_object_file(CommitNode *node) {
     fprintf(info_file, "%s\n", node->log);
     fclose(info_file);
 
-    if (chdir("root") == -1) {
+    FILE *list_file = xfopen("list", "w");
+    fwrite(list_file_content, 1, strlen(list_file_content), list_file);
+    fclose(list_file);
+
+    if (mkdir("root", 0775) == -1 || chdir("root") == -1) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
     }
 
+    inorder_traversal_func(snapshot, scan_and_make);
+
     xfree(commit_dir);
+    xfree(list_file_content);
+    xfree(leader_commit_id);
+    SnapshotBSTDestory(&bst_leader);
+    SnapshotBSTDestory(&snapshot);
     cd_to_project_root(NULL);
 }
 
