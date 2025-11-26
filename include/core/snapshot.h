@@ -37,10 +37,15 @@ void inorder_traversal_print(SnapshotBST *bst, const char *msg, const char *colo
 
 void inorder_traversal_delete(SnapshotBST *target_bst, SnapshotBST *ref_bst);
 
+void compare_two_trees(SnapshotBST *main_bst, SnapshotBST *ref_bst,
+                       void (*action)(const char *, int));
+
 int is_same_tree(SnapshotBST *bst1, SnapshotBST *bst2);
 
 SnapshotBST *read_leader_commit_BST(char **leader_id);
 
 size_t amount_of_BST(SnapshotBST *bst);
+
+void path_and_content_of_node(SnapshotNode *node, char **path, char **content);
 
 #endif

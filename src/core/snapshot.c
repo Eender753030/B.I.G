@@ -354,6 +354,17 @@ void inorder_traversal_delete(SnapshotBST *target_bst, SnapshotBST *ref_bst) {
     _inorder_traversal_delete(target_bst, ref_bst->root);
 }
 
+static void _inorder_traversal_search_and_compare(SnapshotBST *bst, SnapshotNode *node,
+                                                  void (*action)(const char *, int)) {
+    if (bst == NULL || node == NULL) {
+        return;
+    }
+    _inorder_traversal_search_and_compare(bst, node->left, action);
+    int result = SnapshotBST_Search_and_Compare(bst, node->file->path, node->file->ref.content);
+    action(node->file->path, result);
+    _inorder_traversal_search_and_compare(bst, node->right, action);
+}
+
 void compare_two_trees(SnapshotBST *main_bst, SnapshotBST *ref_bst,
                        void (*action)(const char *, int)) {
     _inorder_traversal_search_and_compare(main_bst, ref_bst->root, action);
@@ -523,4 +534,9 @@ SnapshotBST *read_leader_commit_BST(char **leader_id) {
 
 size_t amount_of_BST(SnapshotBST *bst) {
     return bst->node_amount;
+}
+
+void path_and_content_of_node(SnapshotNode *node, char **path, char **content) {
+    *path = node->file->path;
+    *content = node->file->ref.content;
 }
