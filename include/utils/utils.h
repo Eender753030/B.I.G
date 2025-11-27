@@ -44,4 +44,6 @@ uint64_t hash_function(const char *string);
  */
 char *hash_to_string(uint64_t hash);
 
+char *datetime_now_to_str();
+
 #endif

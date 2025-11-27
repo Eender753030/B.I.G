@@ -48,7 +48,7 @@ void *stack_pop(stack_t *self) {
     return data;
 }
 
-void *stack_peak(stack_t *self) {
+void *stack_peek(stack_t *self) {
     if (self == NULL || is_stack_empty(self)) {
         return NULL;
     }

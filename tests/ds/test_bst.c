@@ -10,7 +10,7 @@ typedef struct {
     int data;
 } data_t;
 
-static int32_t cmp_func(void* data1, void* data2) {
+static int8_t cmp_func(void* data1, void* data2) {
     data_t* data1_d = (data_t*)data1;
     data_t* data2_d = (data_t*)data2;
     return (data1_d->data < (data2_d->data) ? -1 : (data1_d->data > data2_d->data) ? 1 : 0);
@@ -21,8 +21,10 @@ static void equal_handle(void* node, void* data) {
     printf("Drop equal data: %d == %d!\n", ((data_t*)data)->data, data_->data);
 }
 
-static void inoder_print(void* node) {
-    printf("%d ", ((data_t*)bst_node_get_data((bst_node_t*)node))->data);
+static void inoder_print(void* data, void* args) {
+    if (args == NULL) {
+    }
+    printf("%d ", ((data_t*)data)->data);
 }
 
 static void free_func(void** data) {
@@ -65,10 +67,10 @@ int main() {
     bst_insert(bst_list, data5, equal_handle);
     bst_insert(bst_list, data4, equal_handle);
 
-    bst_inorder_func(bst, inoder_print);
+    bst_inorder_func(bst, inoder_print, NULL);
     printf("amount: %lu ", bst_get_amount(bst));
     puts("");
-    bst_inorder_func(bst_list, inoder_print);
+    bst_inorder_func(bst_list, inoder_print, NULL);
     printf("amount: %lu ", bst_get_amount(bst_list));
     puts("");
 
@@ -78,10 +80,10 @@ int main() {
 
     bst_delete(bst_list, data5, free_func);
     bst_delete(bst_list, data6, free_func);
-    bst_inorder_func(bst, inoder_print);
+    bst_inorder_func(bst, inoder_print, NULL);
     puts("");
     puts("");
-    bst_inorder_func(bst_list, inoder_print);
+    bst_inorder_func(bst_list, inoder_print, NULL);
     puts("");
 
     bst_node_t* searched_node = bst_search(bst, data3);

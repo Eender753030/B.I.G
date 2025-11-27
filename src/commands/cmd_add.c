@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "core/index.h"
 #include "core/snapshot.h"
 #include "utils/error_handle.h"
 #include "utils/file_handle.h"
@@ -14,23 +15,26 @@
 #include "utils/utils.h"
 
 static void check_add_files(const char *path) {
+    if (access(path, F_OK) != 0) {
+        ErrorCustomMsg("Error: '%s' did not match to any file or directory.\n", path);
+    }
     if (access(".big", F_OK) == 0 && strncmp(path, "..", 3) == 0) {
         ErrorCustomMsg("Error: '..' is outside project directory.\n");
     }
 }
 
-static void process_dir_or_file(const char *path, SnapshotBST *bst, struct stat *file_stat,
-                                SnapshotBST *leader_bst, const char *leader_id) {
+static void process_dir_or_file(const char *path, snapshot_bst_t *bst, struct stat *file_stat,
+                                snapshot_bst_t *leader_bst) {
     if (strncmp(path, ".", 2) == 0) {
-        process_path(bst, ".", leader_bst, leader_id);
+        process_path(bst, ".", leader_bst);
     } else {
         if (stat(path, file_stat) == -1)
             ErrnoHandler(__func__, __FILE__, __LINE__);
 
         if (S_ISDIR(file_stat->st_mode))
-            process_path(bst, path, leader_bst, leader_id);
+            process_path(bst, path, leader_bst);
         else {
-            SnapshotBSTInsert(bst, path, leader_bst, leader_id);
+            snapshot_bst_insert(bst, path, leader_bst);
         }
     }
 }
@@ -52,33 +56,13 @@ void cmd_add(int argc, char *argv[]) {
         check_add_files(root_path_list[i]);
     }
 
-    char *org_dir;
-    cd_to_project_root(&org_dir);
-
-    SnapshotBST *bst = read_index_dic(NULL, NULL);
+    snapshot_bst_t *snapshot_bst = read_index_file();
 
     struct stat file_stat;
     for (size_t i = 0; i < input_size; i++) {
-        char index_dir[4096];
-        snprintf(index_dir, sizeof(index_dir), ".big/index/root/%s", root_path_list[i]);
-        if (access(index_dir, F_OK) == 0 && access(root_path_list[i], F_OK) != 0) {
-            remove(index_dir);
-            SnapshotBSTDelete(bst, root_path_list[i]);
-            continue;
-        }
-        char *normalized_path = relative_path_calc(org_dir, root_path_list[i]);
-
-        if (access(normalized_path, F_OK) == 0) {
-            process_dir_or_file(normalized_path, bst, &file_stat, NULL, NULL);
-        } else {
-            ErrorCustomMsg("Error: '%s' did not match to any file or directory.\n",
-                           root_path_list[i]);
-        }
-        free(normalized_path);
-        normalized_path = NULL;
+        process_dir_or_file(root_path_list[i], snapshot_bst, &file_stat, NULL);
     }
 
-    save_index_dic(bst);
-    xfree(org_dir);
-    SnapshotBSTDestory(&bst);
+    save_index_file(snapshot_bst);
+    snapshot_bst_free(&snapshot_bst);
 }

@@ -17,7 +17,9 @@ void bst_insert(bst_t* bst, void* data, void (*equal_handle_callback)(void*, voi
 
 bst_node_t* bst_search(bst_t* bst, void* data);
 
-void bst_delete(bst_t* bst, void* data);
+void bst_delete(bst_t* bst, void* data, void (*free_func)(void**));
+
+void** bst_inorder_to_list(bst_t* bst);
 
 void bst_inorder_func(bst_t* bst, void (*callback)(void*, void*), void* args);
 
@@ -26,6 +28,8 @@ void bst_node_free(bst_node_t** node, void (*free_callback)(void**));
 void bst_free(bst_t** bst, void (*free_callback)(void**));
 
 bst_node_t* bst_get_root(bst_t* bst);
+
+uint64_t bst_get_amount(bst_t* bst);
 
 void* bst_node_get_data(bst_node_t* node);
 

@@ -1,5 +1,6 @@
 #include "core/blob.h"
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +32,7 @@ char *blob_create_from_file(const char *path) {
     if (file_len > 0) {
         if (fread(content, 1, file_len, file) != file_len) {
             fclose(file);
-            ErrorCustomMsg("Failed to read file: %s", path);
+            ErrorCustomMsg("Failed to read file: %s\n", path);
         }
     }
     fclose(file);
@@ -44,7 +45,7 @@ char *blob_create_from_file(const char *path) {
     if (access(object_path, F_OK) != 0) {
         FILE *obj_file = fopen(object_path, "wb");
         if (obj_file == NULL) {
-            ErrorCustomMsg("Failed to write object file: %s", object_path);
+            ErrorCustomMsg("Failed to write object file: %s\n", object_path);
         }
         fwrite(content, 1, file_len, obj_file);
         fclose(obj_file);

@@ -15,7 +15,7 @@ struct bst_node {
 struct bst {
     bst_node_t* root;
     uint64_t amount;
-    int8_t (*cmp_func)(void*, void*);
+    int8_t (*cmp_callback)(void*, void*);
 };
 
 bst_node_t* bst_node_create(void* data) {
@@ -31,17 +31,16 @@ bst_node_t* bst_node_create(void* data) {
     return new_node;
 }
 
-bst_t* bst_create(int8_t (*cmp_func)(void*, void*)) {
+bst_t* bst_create(int8_t (*cmp_callback)(void*, void*)) {
     bst_t* new_bst = xmalloc(sizeof(*new_bst));
 
     new_bst->root = NULL;
-    new_bst->cmp_func = cmp_func;
+    new_bst->cmp_callback = cmp_callback;
     new_bst->amount = 0;
     return new_bst;
 }
 
-static bst_node_t* _bst_create_from_list(void** list, int64_t left, int64_t right,
-                                         uint64_t* amount) {
+static bst_node_t* _bst_create_from_list(void** list, int64_t left, int64_t right) {
     if (left > right) {
         return NULL;
     }
@@ -49,22 +48,23 @@ static bst_node_t* _bst_create_from_list(void** list, int64_t left, int64_t righ
 
     bst_node_t* root = bst_node_create(list[middle]);
 
-    root->left = _bst_create_from_list(list, left, middle - 1, amount);
-    root->right = _bst_create_from_list(list, middle + 1, right, amount);
+    root->left = _bst_create_from_list(list, left, middle - 1);
+    root->right = _bst_create_from_list(list, middle + 1, right);
 
     return root;
 }
 
-bst_t* bst_create_from_list(void** list, uint64_t list_size, int8_t (*cmp_func)(void*, void*)) {
+bst_t* bst_create_from_list(void** list, uint64_t list_size, int8_t (*cmp_callback)(void*, void*)) {
     if (list == NULL) {
         return NULL;
     }
-    bst_t* new_bst = bst_create(cmp_func);
-    new_bst->root = _bst_create_from_list(list, 0, (int64_t)list_size - 1, &(new_bst->amount));
+    bst_t* new_bst = bst_create(cmp_callback);
+    new_bst->root = _bst_create_from_list(list, 0, (int64_t)list_size - 1);
+    new_bst->amount = list_size;
     return new_bst;
 }
 
-void bst_insert(bst_t* bst, void* data, void (*equal_handle)(void*)) {
+void bst_insert(bst_t* bst, void* data, void (*equal_handle_callback)(void*, void*)) {
     if (bst == NULL || data == NULL) {
         return;
     }
@@ -77,7 +77,7 @@ void bst_insert(bst_t* bst, void* data, void (*equal_handle)(void*)) {
 
     bst_node_t* curr = bst->root;
     while (curr != NULL) {
-        int8_t cmp_result = bst->cmp_func(data, curr->data);
+        int8_t cmp_result = bst->cmp_callback(data, curr->data);
         if (cmp_result < 0) {
             if (curr->left == NULL) {
                 curr->left = bst_node_create(data);
@@ -94,8 +94,8 @@ void bst_insert(bst_t* bst, void* data, void (*equal_handle)(void*)) {
             curr = curr->right;
 
         } else {
-            if (equal_handle != NULL) {
-                equal_handle(data);
+            if (equal_handle_callback != NULL) {
+                equal_handle_callback(curr, data);
             }
             return;
         }
@@ -109,7 +109,7 @@ bst_node_t* bst_search(bst_t* bst, void* data) {
 
     bst_node_t* curr = bst->root;
     while (curr != NULL) {
-        int8_t cmp_result = bst->cmp_func(data, curr->data);
+        int8_t cmp_result = bst->cmp_callback(data, curr->data);
         if (cmp_result < 0) {
             curr = curr->left;
         } else if (cmp_result > 0) {
@@ -121,14 +121,14 @@ bst_node_t* bst_search(bst_t* bst, void* data) {
     return NULL;
 }
 
-void bst_delete(bst_t* bst, void* data) {
-    if (bst == NULL || bst->root == NULL) {
+void bst_delete(bst_t* bst, void* data, void (*free_callback)(void**)) {
+    if (bst == NULL || bst->root == NULL || free_callback == NULL) {
         return;
     }
     bst_node_t* parent = NULL;
     bst_node_t* curr = bst->root;
     int8_t cmp_result;
-    while (curr != NULL && (cmp_result = bst->cmp_func(data, curr->data)) != 0) {
+    while (curr != NULL && (cmp_result = bst->cmp_callback(data, curr->data)) != 0) {
         parent = curr;
         if (cmp_result < 0) {
             curr = curr->left;
@@ -148,7 +148,7 @@ void bst_delete(bst_t* bst, void* data) {
             succ = succ->left;
         }
 
-        xfree(curr->data);
+        free_callback(&(curr->data));
         curr->data = succ->data;
         succ->data = NULL;
 
@@ -168,15 +168,41 @@ void bst_delete(bst_t* bst, void* data) {
         }
     }
 
-    bst->amount--;
     if (curr->data != NULL) {
-        xfree(curr->data);
+        free_callback(&(curr->data));
     }
     xfree(curr);
+    bst->amount--;
 }
 
-void bst_inorder_func(bst_t* bst, void (*func)(void*)) {
+void** bst_inorder_to_list(bst_t* bst) {
     if (bst == NULL || bst->root == NULL) {
+        return NULL;
+    }
+    uint64_t idx = 0;
+    uint64_t bst_amount = bst_get_amount(bst);
+    void** list = xmalloc(sizeof(*list) * bst_amount);
+
+    stack_t* stack = stack_create();
+    bst_node_t* curr = bst->root;
+
+    while (is_stack_empty(stack) == false || curr != NULL || idx < bst_amount) {
+        while (curr != NULL) {
+            stack_push(stack, curr);
+            curr = curr->left;
+        }
+        curr = stack_pop(stack);
+
+        list[idx++] = curr->data;
+
+        curr = curr->right;
+    }
+    stack_free(&stack);
+    return list;
+}
+
+void bst_inorder_func(bst_t* bst, void (*callback)(void*, void*), void* args) {
+    if (bst == NULL || bst->root == NULL || callback == NULL) {
         return;
     }
 
@@ -189,32 +215,43 @@ void bst_inorder_func(bst_t* bst, void (*func)(void*)) {
             curr = curr->left;
         }
         curr = stack_pop(stack);
-        func(curr->data);
+        callback(curr->data, args);
         curr = curr->right;
     }
     stack_free(&stack);
 }
 
-void bst_node_free(bst_node_t** node) {
-    if (node == NULL || *node == NULL) {
+void bst_node_free(bst_node_t** node, void (*free_callback)(void**)) {
+    if (node == NULL || *node == NULL || free_callback == NULL) {
         return;
     }
-    bst_node_free(&((*node)->left));
-    bst_node_free(&((*node)->right));
-    xfree((*node)->data);
+    free_callback(&((*node)->data));
     xfree((*node));
 }
 
-void bst_free(bst_t** bst) {
-    if (bst == NULL || *bst == NULL) {
+static void _bst_free(bst_node_t** node, void (*free_callback)(void**)) {
+    if (node == NULL || *node == NULL || free_callback == NULL) {
         return;
     }
-    bst_node_free(&((*bst)->root));
+    _bst_free(&((*node)->left), free_callback);
+    _bst_free(&((*node)->right), free_callback);
+    bst_node_free(node, free_callback);
+}
+
+void bst_free(bst_t** bst, void (*free_callback)(void**)) {
+    if (bst == NULL || *bst == NULL || free_callback == NULL) {
+        return;
+    }
+    _bst_free(&((*bst)->root), free_callback);
     xfree((*bst));
 }
 
 bst_node_t* bst_get_root(bst_t* bst) {
     return bst->root;
+}
+
+uint64_t bst_get_amount(bst_t* bst) {
+    return bst->amount;
 }
 
 void* bst_node_get_data(bst_node_t* node) {

@@ -4,7 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "core/commit_graph.h"
+#include "core/commit.h"
 #include "utils/error_handle.h"
 #include "utils/utils.h"
 
@@ -29,11 +29,11 @@ void cmd_commit(int argc, char *argv[]) {
     if (access(".big/index", F_OK) == -1) {
         ErrorCustomMsg("Error: Nothing to commit\n");
     }
-    CommitNode *new_commit = CommitNodeCreate(commit_log_insert(log_message));
+    commit_node_t *new_commit = commit_node_create(log_message);
 
-    save_object_file(new_commit);
+    save_commit_obj(new_commit);
 
-    leader_update(new_commit);
+    update_leader(new_commit);
 
-    CommitNodeFree(&new_commit);
+    commit_node_free(&new_commit);
 }

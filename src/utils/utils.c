@@ -95,3 +95,14 @@ char *hash_to_string(uint64_t hash) {
     snprintf(hex_str, size, "%llx", (unsigned long long)hash);
     return hex_str;
 }
+
+char *datetime_now_to_str() {
+    char date_buffer[100];
+    struct tm *datetime_now;
+    time_t time_now = time(NULL);
+
+    datetime_now = localtime(&time_now);
+    strftime(date_buffer, sizeof(date_buffer), "%Y/%m/%d %H:%M:%S", datetime_now);
+
+    return str_dup(date_buffer);
+}

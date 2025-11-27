@@ -1,51 +1,27 @@
 #ifndef SNAPSHOT_H
 #define SNAPSHOT_H
 
+#include <stdbool.h>
 #include <stdlib.h>
 
-#define NOT_FOUND -1
-#define NOT_MATCH 1
-#define MATCH 0
+#include "ds/bst.h"
 
-typedef struct SnapshotNode SnapshotNode;
+typedef struct file_info file_info_t;
 
-typedef struct SnapshotBST SnapshotBST;
+typedef bst_node_t snapshot_node_t;
 
-SnapshotBST *SnapshotBSTCreateEmpty();
+typedef bst_t snapshot_bst_t;
 
-void SnapshotBSTInsert(SnapshotBST *bst, const char *path, SnapshotBST *leader_bst,
-                       const char *leader_id);
+file_info_t *file_info_create_from_index(const char *path, const char *hash, bool is_changed);
 
-SnapshotNode *SnapshotBSTSearch(SnapshotBST *bst, const char *path);
+snapshot_bst_t *snapshot_bst_create();
 
-int SnapshotBST_Search_and_Compare(SnapshotBST *bst, const char *path, const char *content);
+snapshot_bst_t *snapshot_bst_create_from_list(file_info_t **list, uint64_t size);
 
-void SnapshotBSTDelete(SnapshotBST *bst, const char *target_path);
+void snapshot_bst_insert(snapshot_bst_t *self, const char *path, snapshot_bst_t *leader_bst);
 
-void SnapshotBSTDestory(SnapshotBST **bst);
+void snapshot_bst_free(snapshot_bst_t **bst);
 
-void process_path(SnapshotBST *bst, const char *root_path, SnapshotBST *leader_bst,
-                  const char *leader_id);
-
-SnapshotBST *read_index_dic(SnapshotBST *leader_bst, const char *leader_id);
-
-void save_index_dic(SnapshotBST *bst);
-
-void inorder_traversal_func(SnapshotBST *bst, void (*action)(SnapshotNode *));
-
-void inorder_traversal_print(SnapshotBST *bst, const char *msg, const char *color);
-
-void inorder_traversal_delete(SnapshotBST *target_bst, SnapshotBST *ref_bst);
-
-void compare_two_trees(SnapshotBST *main_bst, SnapshotBST *ref_bst,
-                       void (*action)(const char *, int));
-
-int is_same_tree(SnapshotBST *bst1, SnapshotBST *bst2);
-
-SnapshotBST *read_leader_commit_BST(char **leader_id);
-
-size_t amount_of_BST(SnapshotBST *bst);
-
-void path_and_content_of_node(SnapshotNode *node, char **path, char **content);
+void file_info_get_content(file_info_t *file_info, char **path, char **hash, bool *is_changed);
 
 #endif
