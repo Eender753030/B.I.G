@@ -228,3 +228,25 @@ void update_leader(commit_node_t *node) {
     fprintf(leader_file, "%s\n", node->commit_hash);
     fclose(leader_file);
 }
+
+void get_commit_node_info(commit_node_t *node, char **log, char **datetime, char **hash) {
+    if (node == NULL) {
+        return;
+    }
+    if (log != NULL) {
+        *log = node->log;
+    }
+    if (datetime != NULL) {
+        *datetime = node->datetime;
+    }
+    if (hash != NULL) {
+        *hash = node->commit_hash;
+    }
+}
+
+commit_node_t *get_commit_parent(commit_node_t *node) {
+    if (node == NULL) {
+        return NULL;
+    }
+    return node->parent;
+}

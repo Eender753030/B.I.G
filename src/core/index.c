@@ -84,14 +84,17 @@ void save_index_file(snapshot_bst_t *bst) {
     fclose(index_file);
 }
 
-snapshot_bst_t *read_index_file() {
-    FILE *index_file = fopen(".big/index", "r");
+snapshot_bst_t *read_index_file_from_path(const char *path) {
+    FILE *index_file = fopen(path, "r");
     if (index_file == NULL) {
         return snapshot_bst_create();
     }
 
     uint64_t total_size;
-    fscanf(index_file, "%lu\n", &total_size);
+    if (fscanf(index_file, "%lu\n", &total_size) == -1) {
+        fclose(index_file);
+        return snapshot_bst_create();
+    }
 
     file_info_t **file_info_list = xmalloc(sizeof(*file_info_list) * total_size);
 
@@ -99,13 +102,14 @@ snapshot_bst_t *read_index_file() {
     char path_buffer[960];
     char hash_buffer[64];
     int is_changed_temp;
-    while (fscanf(index_file, "%959[^\t]\t%s\t%d\n", path_buffer, hash_buffer, &is_changed_temp) ==
-           3) {
+    while (idx < total_size && fscanf(index_file, "%959[^\t]\t%s\t%d\n", path_buffer, hash_buffer,
+                                      &is_changed_temp) == 3) {
         file_info_list[idx++] =
             file_info_create_from_index(path_buffer, hash_buffer, is_changed_temp != 0);
     }
+
     if (idx != total_size) {
-        ErrorCustomMsg("Error: read index file failed");
+        fprintf(stderr, "Warning: index file mismatch\n");
     }
 
     fclose(index_file);
@@ -115,4 +119,8 @@ snapshot_bst_t *read_index_file() {
     xfree(file_info_list);
 
     return new_bst;
+}
+
+snapshot_bst_t *read_index_file() {
+    return read_index_file_from_path(".big/index");
 }

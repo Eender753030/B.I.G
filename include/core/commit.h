@@ -19,4 +19,8 @@ void save_commit_obj(commit_node_t *node);
 
 void update_leader(commit_node_t *node);
 
+void get_commit_node_info(commit_node_t *node, char **log, char **datetime, char **hash);
+
+commit_node_t *get_commit_parent(commit_node_t *node);
+
 #endif
