@@ -17,7 +17,7 @@ void cmd_commit(int argc, char *argv[]) {
     if (argc == 1)
         log_message = NULL;
     else {
-        if (strncmp(argv[1], "-m", 3) == 0 && argc == 3) {
+        if (strcmp(argv[1], "-m") == 0 && argc == 3) {
             log_message = argv[2];
         } else {
             ErrorCustomMsg("Usage: big commit [-m \"<log message>\"]\n");

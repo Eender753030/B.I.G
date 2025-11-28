@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "utils/error_handle.h"
@@ -13,8 +14,10 @@
 
 char *str_dup(const char *string) {
     // Allocate memory: length of string + 1 for null terminator
-    char *new_string = xmalloc(strlen(string) + 1);
-    strcpy(new_string, string);
+    uint64_t str_len = strlen(string);
+    char *new_string = xmalloc(str_len + 1);
+    memcpy(new_string, string, str_len);
+    new_string[str_len] = '\0';
     return new_string;
 }
 
@@ -37,7 +40,7 @@ int check_init() {
             return INITED;
         }
         chdir("..");  // Move to parent directory
-    } while (strncmp(cwd, "/", 2));  // Stop if we hit the root directory "/"
+    } while (strcmp(cwd, "/"));  // Stop if we hit the root directory "/"
 
     return NOT_INIT;
 }
@@ -45,11 +48,7 @@ int check_init() {
 void cd_to_project_root(char **org_dir) {
     // If the caller requested the original path, save it first
     if (org_dir != NULL) {
-        char buffer[4096];
-        if (getcwd(buffer, 4096) == NULL) {
-            ErrnoHandler(__func__, __FILE__, __LINE__);
-        }
-        *org_dir = str_dup(buffer);
+        *org_dir = getcwd(NULL, 0);
         if (*org_dir == NULL) {
             ErrnoHandler(__func__, __FILE__, __LINE__);
         }
@@ -59,12 +58,12 @@ void cd_to_project_root(char **org_dir) {
 
     // Keep moving up ("..") until we find the ".big" folder
     while (access(".big", F_OK) == -1) {
-        if (getcwd(current_dir, 4096) == NULL) {
+        if (getcwd(current_dir, sizeof(current_dir)) == NULL) {
             ErrnoHandler(__func__, __FILE__, __LINE__);
         }
 
         // Safety check: If we hit root "/" and still haven't found .big, it's an error
-        if (strncmp(current_dir, "/", 2) == 0) {
+        if (strcmp(current_dir, "/") == 0) {
             ErrorCustomMsg("Error: can not cd to outside the root directory\n");
         }
         if (chdir("..") == -1) {
@@ -78,7 +77,7 @@ void cd_to_project_root(char **org_dir) {
  * A simple and effective string hash function.
  * Magic number 5381 and multiplier 33 (<<5 + 1) provide good distribution.
  */
-unsigned long hash_function(const char *string) {
+uint64_t hash_function(const char *string) {
     uint64_t hash = 5381;
     for (; *string != '\0'; string++) {
         hash = ((hash << 5) + hash) + (uint64_t)(*string);

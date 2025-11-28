@@ -64,5 +64,5 @@ char *blob_read_from_hash(const char *hash) {
         return NULL;
     }
 
-    return read_whole_file(object_path);
+    return read_whole_file(object_path, NULL);
 }

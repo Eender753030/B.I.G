@@ -26,38 +26,7 @@ void ErrnoHandler(const char *func_name, const char *file_name, const int line) 
 void ErrorCustomMsg(const char *msg, ...) {
     va_list args;
     va_start(args, msg);  // Initialize args to store all values after 'msg'
-
-    // Manual parsing of the format string
-    for (; *msg != '\0'; msg++) {
-        if (*msg == '%') {
-            msg++;
-            switch (*msg) {
-                case 's': {
-                    // Extract a char* argument
-                    const char *str = va_arg(args, const char *);
-                    printf("%s", str ? str : "(null)");
-                    break;
-                }
-                case 'd': {
-                    // Extract an int argument
-                    int val = va_arg(args, int);
-                    printf("%d", val);
-                    break;
-                }
-                case '%': {
-                    putchar('%');
-                    break;
-                }
-                default: {
-                    // Handle unknown format specifiers (print literally)
-                    putchar('%');
-                    putchar(*msg);
-                }
-            }
-        } else {
-            putchar(*msg);  // Print regular characters
-        }
-    }
+    vprintf(msg, args);
     va_end(args);
 
     // Custom errors are fatal, so we exit

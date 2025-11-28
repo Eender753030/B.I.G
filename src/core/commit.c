@@ -65,7 +65,7 @@ commit_node_t *load_parent_info(char *commit_id, long *limit_amount) {
     parent_node->datetime = str_dup(buffer);
 
     if (fgets(buffer, 128, parent_info) != NULL) {
-        if (strncmp(buffer, "null\n", 6) != 0) {
+        if (strcmp(buffer, "null\n") != 0) {
             buffer[strcspn(buffer, "\n")] = '\0';
             char *parent_commit_id = str_dup(buffer);
             parent_node->parent = load_parent_info(parent_commit_id, limit_amount);
