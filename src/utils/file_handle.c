@@ -95,6 +95,38 @@ void mk_dir_and_file(const char *path, const char *content) {
     xfree(temp_path);
 }
 
+static char *path_normalize(const char *path) {
+    char *paths[1024];
+    uint16_t depth = 0;
+
+    char *temp_path = str_dup(path);
+
+    char *token = strtok(temp_path + 1, "/");
+    while (token != NULL) {
+        if (strcmp(token, "..") == 0) {
+            if (depth > 0) {
+                depth--;
+            }
+        } else if (strcmp(token, ".") != 0) {
+            paths[depth++] = token;
+        }
+        token = strtok(NULL, "/");
+    }
+
+    char path_buffer[4096] = {0};
+    if (depth == 0) {
+        snprintf(path_buffer, sizeof(path_buffer), "%s/.", path);
+    } else {
+        for (uint16_t i = 0; i < depth; i++) {
+            strcat(path_buffer, "/");
+            strcat(path_buffer, paths[i]);
+        }
+    }
+
+    xfree(temp_path);
+    return str_dup(path_buffer);
+}
+
 char *relative_path_calc(const char *org_dir, const char *root_path) {
     char *normalized_path;
 
@@ -109,13 +141,18 @@ char *relative_path_calc(const char *org_dir, const char *root_path) {
 
     // realpath resolves ".." and "." and symlinks to a canonical path
     char *absolute_path = realpath(temp_path, NULL);
+
     if (absolute_path == NULL) {
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+        if (errno == ENOENT) {
+            absolute_path = path_normalize(temp_path);
+        } else {
+            xfree(root_dir);
+            ErrnoHandler(__func__, __FILE__, __LINE__);
+        }
     }
 
     // Check if the file is inside our project root
     char *relative_path = strstr(absolute_path, root_dir);
-
     if (relative_path != NULL && strcmp(relative_path, root_dir) != 0) {
         // Pointer arithmetic: Skip the root_dir part + 1 for the '/'
         relative_path += strlen(root_dir) + 1;

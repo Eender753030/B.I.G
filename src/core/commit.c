@@ -31,16 +31,25 @@ char *load_leader() {
     }
 
     uint64_t leader_id_length = get_file_len(leader);
+    if (leader_id_length == 0) {
+        fclose(leader);
+        return NULL;
+    }
 
-    char *leader_id = xmalloc(leader_id_length);
+    char *leader_id = xmalloc(leader_id_length + 1);
 
     uint64_t read_bytes = fread(leader_id, 1, leader_id_length, leader);
+    fclose(leader);
     if (read_bytes != leader_id_length) {
         return NULL;
     }
-    leader_id[leader_id_length - 1] = '\0';
 
-    fclose(leader);
+    leader_id[leader_id_length] = '\0';
+
+    if (leader_id[leader_id_length - 1] == '\n') {
+        leader_id[read_bytes - 1] = '\0';
+    }
+
     return leader_id;
 }
 

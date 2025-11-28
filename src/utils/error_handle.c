@@ -10,11 +10,13 @@
 static const char usage_hint[] =
     "\nUsage: big <command> [<args>]\n\n"
     "Commands:\n"
-    "\tbig init                             Initialize current directory to project root\n"
-    "\tbig add <file or directory>          Add files into index to wait for commit\n"
-    "\tbig commit [-m <message>]            Commit and enter log\n"
-    "\tbig log [-<amount>]                  Show previous commit logs\n"
-    "\tbig status                           Show the status of files from project root\n\n";
+    "\tbig init                                           Initialize current directory to project "
+    "root\n"
+    "\tbig add [-d | --delete] <file or directory> ...    Add files into index to wait for commit\n"
+    "\tbig commit [-m <message>]                          Commit and enter log\n"
+    "\tbig log [-<amount>]                                Show previous commit logs\n"
+    "\tbig status                                         Show the status of files from project "
+    "root\n\n";
 
 void ErrnoHandler(const char *func_name, const char *file_name, const int line) {
     // strerror(errno) converts the error number to a human-readable string
@@ -33,6 +35,12 @@ void ErrorCustomMsg(const char *msg, ...) {
     exit(EXIT_FAILURE);
 }
 
+void WarningCustomMsg(const char *msg, ...) {
+    va_list args;
+    va_start(args, msg);
+    vprintf(msg, args);
+    va_end(args);
+}
 void InputError() {
     fprintf(stderr, "%s\n", usage_hint);
     exit(EXIT_FAILURE);

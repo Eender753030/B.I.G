@@ -67,19 +67,19 @@ file_info_t *file_info_create_from_index(const char *path, const char *hash, boo
     return new_file_info;
 }
 
-static int8_t path_cmp_func(void *file_info1, void *file_info2) {
+static int8_t path_cmp(void *file_info1, void *file_info2) {
     return (int8_t)strcmp(((file_info_t *)file_info1)->path, ((file_info_t *)file_info2)->path);
 }
 
 snapshot_bst_t *snapshot_bst_create() {
-    return bst_create(path_cmp_func);
+    return bst_create(path_cmp);
 }
 
 snapshot_bst_t *snapshot_bst_create_from_list(file_info_t **list, uint64_t size) {
-    return bst_create_from_list((void **)list, size, path_cmp_func);
+    return bst_create_from_list((void **)list, size, path_cmp);
 }
 
-static void equal_handle_func(void *node, void *new_file_info) {
+static void equal_handle(void *node, void *new_file_info) {
     file_info_t *file_info = bst_node_get_data(node);
     xfree(file_info->hash);
 
@@ -96,7 +96,7 @@ void snapshot_bst_insert(snapshot_bst_t *self, const char *path, snapshot_bst_t 
 
     file_info_t *new_file_info = file_info_create(path, leader_bst);
 
-    bst_insert(self, new_file_info, equal_handle_func);
+    bst_insert(self, new_file_info, equal_handle);
 }
 
 void snapshot_bst_insert_projectdir(snapshot_bst_t *self, const char *path) {
@@ -106,20 +106,31 @@ void snapshot_bst_insert_projectdir(snapshot_bst_t *self, const char *path) {
 
     file_info_t *new_file_info = file_info_create_from_projectdir(path);
 
-    bst_insert(self, new_file_info, equal_handle_func);
+    bst_insert(self, new_file_info, equal_handle);
 }
 
-static void file_info_free_func(void **file_info) {
+static void file_info_free(void **file_info) {
     xfree(((file_info_t *)*file_info)->path);
     xfree(((file_info_t *)*file_info)->hash);
     xfree(*file_info);
+}
+
+void snapshot_bst_delete(snapshot_bst_t *self, const char *path) {
+    if (self == NULL || path == NULL) {
+        return;
+    }
+
+    file_info_t dummy_file_info;
+    dummy_file_info.path = (char *)path;
+
+    bst_delete(self, &dummy_file_info, file_info_free);
 }
 
 void snapshot_bst_free(snapshot_bst_t **bst) {
     if (bst == NULL || *bst == NULL) {
         return;
     }
-    bst_free(bst, file_info_free_func);
+    bst_free(bst, file_info_free);
 }
 
 void file_info_get_content(file_info_t *file_info, char **path, char **hash, bool *is_changed) {
@@ -155,4 +166,15 @@ bool is_same_file_info(void *file_info1, void *file_info2) {
         return false;
     }
     return true;
+}
+
+bool is_snapshot_bst_contains(snapshot_bst_t *self, const char *path) {
+    if (self == NULL || path == NULL) {
+        return false;
+    }
+
+    file_info_t file_info_search;
+    file_info_search.path = (char *)path;
+
+    return bst_search(self, &file_info_search) != NULL;
 }

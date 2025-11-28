@@ -1,11 +1,15 @@
 #include "commands/cmd_commit.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "core/commit.h"
+#include "core/index.h"
+#include "core/snapshot.h"
 #include "utils/error_handle.h"
+#include "utils/memory.h"
 #include "utils/utils.h"
 
 void cmd_commit(int argc, char *argv[]) {
@@ -26,7 +30,9 @@ void cmd_commit(int argc, char *argv[]) {
 
     cd_to_project_root(NULL);
 
-    if (access(".big/index", F_OK) == -1) {
+    snapshot_bst_t *index_bst = read_index_file();
+    if (bst_get_amount(index_bst) == 0) {
+        snapshot_bst_free(&index_bst);
         ErrorCustomMsg("Error: Nothing to commit\n");
     }
 

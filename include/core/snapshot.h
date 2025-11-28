@@ -22,10 +22,14 @@ void snapshot_bst_insert(snapshot_bst_t *self, const char *path, snapshot_bst_t 
 
 void snapshot_bst_insert_projectdir(snapshot_bst_t *self, const char *path);
 
+void snapshot_bst_delete(snapshot_bst_t *self, const char *path);
+
 void snapshot_bst_free(snapshot_bst_t **bst);
 
 void file_info_get_content(file_info_t *file_info, char **path, char **hash, bool *is_changed);
 
 bool is_same_file_info(void *file_info1, void *file_info2);
+
+bool is_snapshot_bst_contains(snapshot_bst_t *self, const char *path);
 
 #endif
