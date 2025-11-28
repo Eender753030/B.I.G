@@ -24,9 +24,7 @@ static uint64_t hash_binary(const void *data, uint64_t len) {
 char *blob_create_from_file(const char *path) {
     FILE *file = xfopen(path, "rb");
 
-    fseek(file, 0, SEEK_END);
-    uint64_t file_len = (uint64_t)ftell(file);
-    rewind(file);
+    uint64_t file_len = get_file_len(file);
 
     char *content = xmalloc(file_len);
     if (file_len > 0) {
@@ -53,6 +51,28 @@ char *blob_create_from_file(const char *path) {
 
     xfree(content);
 
+    return hash_str;
+}
+
+char *blob_get_file_hash(const char *path) {
+    FILE *file = fopen(path, "rb");
+    if (file == NULL) {
+        return NULL;
+    }
+    uint64_t file_len = get_file_len(file);
+    char *content = xmalloc(file_len + 1);
+
+    if (file_len > 0) {
+        if (fread(content, 1, file_len, file) != file_len) {
+            fclose(file);
+            xfree(content);
+            return NULL;
+        }
+    }
+    fclose(file);
+
+    char *hash_str = hash_to_string(hash_binary(content, file_len));
+    xfree(content);
     return hash_str;
 }
 

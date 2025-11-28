@@ -1,46 +1,71 @@
 #include "commands/cmd_status.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <string.h>
 
+#include "core/commit.h"
+#include "core/index.h"
 #include "core/snapshot.h"
 #include "utils/color.h"
 #include "utils/error_handle.h"
 #include "utils/memory.h"
 #include "utils/utils.h"
 
-void leader_cmp_index(const char *path, int result) {
-    if (result == MATCH) {
-        return;
-    }
-    printf(COLOR_GREEN "\t%s:    %s\n" COLOR_END, (result == NOT_FOUND) ? "New File" : "Modified",
-           path);
-}
+#define LEADER_VS_INDEX true
+#define INDEX_VS_DIR false
 
-void check_index_exist(SnapshotNode *node) {
-    char *path;
-    char index_path[4096];
-    path_and_content_of_node(node, &path, NULL);
-    snprintf(index_path, sizeof(index_path), ".big/index/root/%s", path);
-    if (access(index_path, F_OK) != 0) {
-        printf(COLOR_GREEN "\t%s:    %s\n" COLOR_END, "Deleted", path);
-    }
-}
+static void print_diff(snapshot_bst_t *bst1, snapshot_bst_t *bst2, bool group) {
+    file_info_t **list1 = (file_info_t **)bst_inorder_to_list(bst1);
+    file_info_t **list2 = (file_info_t **)bst_inorder_to_list(bst2);
 
-void index_cmp_workdir(const char *path, int result) {
-    if (result == MATCH) {
-        return;
-    }
-    printf(COLOR_RED "\t%s:    %s\n" COLOR_END, (result == NOT_FOUND) ? "Untracked" : "Modified",
-           path);
-}
+    uint64_t list1_len = bst_get_amount(bst1);
+    uint64_t list2_len = bst_get_amount(bst2);
+    uint64_t i = 0, j = 0;
 
-void check_workdir_exist(SnapshotNode *node) {
-    char *path;
-    path_and_content_of_node(node, &path, NULL);
-    if (access(path, F_OK) != 0) {
-        printf(COLOR_RED "\t%s:    %s\n" COLOR_END, "Deleted", path);
+    char *color = (group == LEADER_VS_INDEX) ? COLOR_GREEN : COLOR_RED;
+
+    while (i < list1_len || j < list2_len) {
+        char *path1, *hash1;
+        char *path2, *hash2;
+        if (i < list1_len) {
+            file_info_get_content(list1[i], &path1, &hash1, NULL);
+        }
+        if (j < list2_len) {
+            file_info_get_content(list2[j], &path2, &hash2, NULL);
+        }
+
+        int cmp_result;
+        if (i >= list1_len) {
+            cmp_result = 1;
+        } else if (j >= list2_len) {
+            cmp_result = -1;
+        } else {
+            cmp_result = strcmp(path1, path2);
+        }
+
+        if (cmp_result < 0) {
+            printf("%s\tdeleted:    %s\n" COLOR_END, color, path1);
+            i++;
+        } else if (cmp_result > 0) {
+            printf("%s\t%s:  %s\n" COLOR_END, color,
+                   (group == LEADER_VS_INDEX ? "new file" : "untracked"), path2);
+            j++;
+        } else {
+            if (strcmp(hash1, hash2) != 0) {
+                printf("%s\tmodified:   %s\n" COLOR_END, color, path1);
+            }
+            i++;
+            j++;
+        }
+    }
+
+    if (list1 != NULL) {
+        xfree(list1);
+    }
+    if (list2 != NULL) {
+        xfree(list2);
     }
 }
 
@@ -55,30 +80,29 @@ void cmd_status(int argc, char *argv[]) {
     }
     cd_to_project_root(NULL);
 
-    char *leader_commit_id;
-    SnapshotBST *bst_leader = read_leader_commit_BST(&leader_commit_id);
+    snapshot_bst_t *leader_bst = NULL;
+    snapshot_bst_t *index_bst = read_index_file();
+    snapshot_bst_t *dir_bst = snapshot_bst_create_from_projectdir();
 
-    SnapshotBST *bst_index = read_index_dic(NULL, NULL);
-
-    SnapshotBST *bst_dir = SnapshotBSTCreateEmpty();
-    process_path(bst_dir, ".", NULL, NULL);
-
-    if (amount_of_BST(bst_index) != 0 && bst_leader != NULL) {
-        printf("\nReady to commit:\n");
-        compare_two_trees(bst_leader, bst_index, leader_cmp_index);
-        inorder_traversal_func(bst_leader, check_index_exist);
-        puts("");
+    char *leader_hash = load_leader();
+    if (leader_hash != NULL) {
+        char path[1024];
+        snprintf(path, sizeof(path), ".big/objects/%s/list", leader_hash);
+        leader_bst = read_index_file_from_path(path);
+        xfree(leader_hash);
+    } else {
+        leader_bst = snapshot_bst_create();
     }
 
-    if (amount_of_BST(bst_index) != 0 && amount_of_BST(bst_dir) != 0) {
-        printf("\nNot in index:\n");
-        compare_two_trees(bst_index, bst_dir, index_cmp_workdir);
+    printf("Ready to commit:\n");
+    print_diff(leader_bst, index_bst, LEADER_VS_INDEX);
+    puts("");
 
-        inorder_traversal_func(bst_index, check_workdir_exist);
-        puts("");
-    }
-    xfree(leader_commit_id);
-    SnapshotBSTDestory(&bst_dir);
-    SnapshotBSTDestory(&bst_index);
-    SnapshotBSTDestory(&bst_leader);
+    printf("Changes not staged:\n");
+    print_diff(index_bst, dir_bst, INDEX_VS_DIR);
+    puts("");
+
+    snapshot_bst_free(&dir_bst);
+    snapshot_bst_free(&index_bst);
+    snapshot_bst_free(&leader_bst);
 }

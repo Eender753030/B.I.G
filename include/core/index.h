@@ -11,4 +11,6 @@ snapshot_bst_t *read_index_file_from_path(const char *path);
 
 snapshot_bst_t *read_index_file();
 
+snapshot_bst_t *snapshot_bst_create_from_projectdir();
+
 #endif

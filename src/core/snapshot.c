@@ -41,6 +41,19 @@ static file_info_t *file_info_create(const char *path, snapshot_bst_t *leader_bs
     return new_file_info;
 }
 
+static file_info_t *file_info_create_from_projectdir(const char *path) {
+    if (path == NULL) {
+        return NULL;
+    }
+
+    file_info_t *new_file_info = xmalloc(sizeof(*new_file_info));
+
+    new_file_info->path = str_dup(path);
+    new_file_info->hash = blob_get_file_hash(path);
+    new_file_info->is_changed = true;
+    return new_file_info;
+}
+
 file_info_t *file_info_create_from_index(const char *path, const char *hash, bool is_changed) {
     if (path == NULL || hash == NULL) {
         return NULL;
@@ -71,7 +84,7 @@ static void equal_handle_func(void *node, void *new_file_info) {
     xfree(file_info->hash);
 
     file_info->hash = ((file_info_t *)new_file_info)->hash;
-
+    file_info->is_changed = ((file_info_t *)new_file_info)->is_changed;
     xfree(((file_info_t *)new_file_info)->path);
     xfree(new_file_info);
 }
@@ -82,6 +95,16 @@ void snapshot_bst_insert(snapshot_bst_t *self, const char *path, snapshot_bst_t 
     }
 
     file_info_t *new_file_info = file_info_create(path, leader_bst);
+
+    bst_insert(self, new_file_info, equal_handle_func);
+}
+
+void snapshot_bst_insert_projectdir(snapshot_bst_t *self, const char *path) {
+    if (self == NULL || path == NULL) {
+        return;
+    }
+
+    file_info_t *new_file_info = file_info_create_from_projectdir(path);
 
     bst_insert(self, new_file_info, equal_handle_func);
 }
@@ -112,4 +135,24 @@ void file_info_get_content(file_info_t *file_info, char **path, char **hash, boo
     if (is_changed != NULL) {
         *is_changed = file_info->is_changed;
     }
+}
+
+bool is_same_file_info(void *file_info1, void *file_info2) {
+    if (file_info1 == NULL && file_info2 == NULL) {
+        return true;
+    }
+    if (file_info1 == NULL || file_info2 == NULL) {
+        return false;
+    }
+
+    file_info_t *f1 = file_info1;
+    file_info_t *f2 = file_info2;
+
+    if (strcmp(f1->path, f2->path) != 0) {
+        return false;
+    }
+    if (strcmp(f1->hash, f2->hash) != 0) {
+        return false;
+    }
+    return true;
 }

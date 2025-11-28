@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "core/commit.h"
 #include "core/index.h"
 #include "core/snapshot.h"
 #include "utils/error_handle.h"
@@ -58,11 +59,22 @@ void cmd_add(int argc, char *argv[]) {
 
     snapshot_bst_t *snapshot_bst = read_index_file();
 
+    char *leader_hash = load_leader();
+    snapshot_bst_t *leader_bst = NULL;
+    if (leader_hash != NULL) {
+        char leader_list_path[1024];
+        snprintf(leader_list_path, sizeof(leader_list_path), ".big/objects/%s/list", leader_hash);
+
+        leader_bst = read_index_file_from_path(leader_list_path);
+        xfree(leader_hash);
+    }
+
     struct stat file_stat;
     for (size_t i = 0; i < input_size; i++) {
-        process_dir_or_file(root_path_list[i], snapshot_bst, &file_stat, NULL);
+        process_dir_or_file(root_path_list[i], snapshot_bst, &file_stat, leader_bst);
     }
 
     save_index_file(snapshot_bst);
+    snapshot_bst_free(&leader_bst);
     snapshot_bst_free(&snapshot_bst);
 }

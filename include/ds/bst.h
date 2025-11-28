@@ -1,6 +1,7 @@
 #ifndef BST_H
 #define BST_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef struct bst_node bst_node_t;
@@ -18,6 +19,8 @@ void bst_insert(bst_t* bst, void* data, void (*equal_handle_callback)(void*, voi
 bst_node_t* bst_search(bst_t* bst, void* data);
 
 void bst_delete(bst_t* bst, void* data, void (*free_func)(void**));
+
+bool is_same_bst(bst_t* bst1, bst_t* bst2, bool (*is_same_callback)(void*, void*));
 
 void** bst_inorder_to_list(bst_t* bst);
 

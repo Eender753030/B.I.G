@@ -51,7 +51,7 @@ void process_path(snapshot_bst_t *bst, const char *root_path, snapshot_bst_t *le
         }
     }
 
-    xfree(dir);
+    closedir(dir);
 }
 
 static void write_index(void *file_info, void *file_t) {
@@ -123,4 +123,45 @@ snapshot_bst_t *read_index_file_from_path(const char *path) {
 
 snapshot_bst_t *read_index_file() {
     return read_index_file_from_path(".big/index");
+}
+
+static void process_path_projectdir(snapshot_bst_t *bst, const char *root_path) {
+    DIR *dir = opendir(root_path);
+    if (dir == NULL) {
+        ErrnoHandler(__func__, __FILE__, __LINE__);
+    }
+    struct dirent *file_dirent;
+    struct stat file_stat;
+
+    while ((file_dirent = readdir(dir)) != NULL) {
+        if (strcmp(file_dirent->d_name, ".") == 0 || strcmp(file_dirent->d_name, "..") == 0 ||
+            strcmp(file_dirent->d_name, ".big") == 0 || strcmp(file_dirent->d_name, "big") == 0) {
+            continue;
+        }
+        char pathbuffer[1024];
+
+        if (strcmp(root_path, ".") == 0) {
+            snprintf(pathbuffer, sizeof(pathbuffer), "%s", file_dirent->d_name);
+        } else {
+            snprintf(pathbuffer, sizeof(pathbuffer), "%s/%s", root_path, file_dirent->d_name);
+        }
+
+        if (stat(pathbuffer, &file_stat) == -1) {
+            ErrnoHandler(__func__, __FILE__, __LINE__);
+        }
+
+        if (S_ISDIR(file_stat.st_mode)) {
+            process_path_projectdir(bst, pathbuffer);
+        } else {
+            snapshot_bst_insert_projectdir(bst, pathbuffer);
+        }
+    }
+
+    closedir(dir);
+}
+
+snapshot_bst_t *snapshot_bst_create_from_projectdir() {
+    snapshot_bst_t *new_dir_bst = snapshot_bst_create();
+    process_path_projectdir(new_dir_bst, ".");
+    return new_dir_bst;
 }

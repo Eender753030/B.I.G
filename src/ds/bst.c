@@ -175,6 +175,36 @@ void bst_delete(bst_t* bst, void* data, void (*free_callback)(void**)) {
     bst->amount--;
 }
 
+bool _is_same_bst(bst_node_t* node1, bst_node_t* node2, bool (*is_same_callback)(void*, void*)) {
+    if (node1 == NULL && node2 == NULL) {
+        return true;
+    }
+    if (node1 == NULL || node2 == NULL) {
+        return false;
+    }
+
+    return is_same_callback(node1->data, node2->data) &&
+           _is_same_bst(node1->left, node2->left, is_same_callback) &&
+           _is_same_bst(node1->right, node2->right, is_same_callback);
+}
+
+bool is_same_bst(bst_t* bst1, bst_t* bst2, bool (*is_same_callback)(void*, void*)) {
+    if (bst1 == NULL && bst2 == NULL) {
+        return true;
+    }
+    if (bst1 == NULL || bst2 == NULL) {
+        return false;
+    }
+    if (bst1->amount != bst2->amount) {
+        return false;
+    }
+    if (bst1->amount == 0) {
+        return true;
+    }
+
+    return _is_same_bst(bst1->root, bst2->root, is_same_callback);
+}
+
 void** bst_inorder_to_list(bst_t* bst) {
     if (bst == NULL || bst->root == NULL) {
         return NULL;
@@ -247,13 +277,22 @@ void bst_free(bst_t** bst, void (*free_callback)(void**)) {
 }
 
 bst_node_t* bst_get_root(bst_t* bst) {
+    if (bst == NULL) {
+        return NULL;
+    }
     return bst->root;
 }
 
 uint64_t bst_get_amount(bst_t* bst) {
+    if (bst == NULL) {
+        return 0;
+    }
     return bst->amount;
 }
 
 void* bst_node_get_data(bst_node_t* node) {
+    if (node == NULL) {
+        return NULL;
+    }
     return node->data;
 }
