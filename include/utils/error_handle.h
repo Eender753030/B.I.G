@@ -18,6 +18,8 @@ void ErrnoHandler(const char *func_name, const char *file_name, const int line);
  */
 void ErrorCustomMsg(const char *msg, ...);
 
+void WarningCustomMsg(const char *msg, ...);
+
 /**
  * @brief Prints usage instructions (help menu) and exits.
  */

@@ -1,6 +1,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <stdint.h>
+
 // Return codes for initialization checks
 #define INITED 0
 #define NOT_INIT -1
@@ -33,13 +35,15 @@ void cd_to_project_root(char **org_dir);
  * @param string Input string.
  * @return Unsigned long hash value.
  */
-unsigned long hash_function(const char *string);
+uint64_t hash_function(const char *string);
 
 /**
  * @brief Converts a numeric hash to its hexadecimal string representation.
  * @param hash The hash value.
  * @return Pointer to the hex string (Caller must free it).
  */
-char *hash_to_string(unsigned long hash);
+char *hash_to_string(uint64_t hash);
+
+char *datetime_now_to_str();
 
 #endif

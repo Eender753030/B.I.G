@@ -1,6 +1,7 @@
 #include "utils/file_handle.h"
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,26 +21,47 @@ FILE *_xfopen(const char *target_file_name, const char *modes, const char *func_
     return file;
 }
 
-char *read_whole_file(const char *file_name) {
+long _xftell(FILE *file, const char *func_name, const char *file_name, const int line) {
+    long ftell_val = ftell(file);
+    if (ftell_val == -1L) {
+        ErrnoHandler(func_name, file_name, line);
+    }
+    return ftell_val;
+}
+
+uint64_t get_file_len(FILE *file) {
+    long current_pos = xftell(file);
+    if (current_pos == -1) {
+        return 0;
+    }
+    if (fseek(file, 0, SEEK_END) != 0) {
+        return 0;
+    }
+    long file_len = xftell(file);
+
+    if (fseek(file, current_pos, SEEK_SET) != 0) {
+        return 0;
+    }
+
+    return (uint64_t)(file_len - current_pos);
+}
+
+char *read_whole_file(const char *file_name, uint64_t *len) {
     FILE *file = xfopen(file_name, "rb");
 
-    /* * [Pattern] Get File Size
-     * 1. Seek to the end (SEEK_END).
-     * 2. Tell the position (ftell), which equals the size in bytes.
-     * 3. Rewind back to start for reading.
-     */
-    fseek(file, 0, SEEK_END);
-    size_t file_len = (size_t)ftell(file);
-    rewind(file);
-
+    uint64_t file_len = get_file_len(file);
     // Allocate buffer (size + 1 for null terminator)
     char *content = xmalloc(file_len + 1);
-    size_t bytes_read = fread(content, 1, file_len, file);
+    uint64_t bytes_read = fread(content, 1, file_len, file);
     if (bytes_read != file_len) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
     }
     content[file_len] = '\0';  // Ensure valid C-string
     fclose(file);
+
+    if (len != NULL) {
+        *len = file_len;
+    }
     return content;
 }
 
@@ -73,27 +95,64 @@ void mk_dir_and_file(const char *path, const char *content) {
     xfree(temp_path);
 }
 
+static char *path_normalize(const char *path) {
+    char *paths[1024];
+    uint16_t depth = 0;
+
+    char *temp_path = str_dup(path);
+
+    char *token = strtok(temp_path + 1, "/");
+    while (token != NULL) {
+        if (strcmp(token, "..") == 0) {
+            if (depth > 0) {
+                depth--;
+            }
+        } else if (strcmp(token, ".") != 0) {
+            paths[depth++] = token;
+        }
+        token = strtok(NULL, "/");
+    }
+
+    char path_buffer[4096] = {0};
+    if (depth == 0) {
+        snprintf(path_buffer, sizeof(path_buffer), "%s/.", path);
+    } else {
+        for (uint16_t i = 0; i < depth; i++) {
+            strcat(path_buffer, "/");
+            strcat(path_buffer, paths[i]);
+        }
+    }
+
+    xfree(temp_path);
+    return str_dup(path_buffer);
+}
+
 char *relative_path_calc(const char *org_dir, const char *root_path) {
     char *normalized_path;
-    char temp_path[4096];
-    char root_dir[4096];
 
-    if (getcwd(root_dir, 4096) == NULL) {
+    char *root_dir = getcwd(NULL, 0);
+    if (root_dir == NULL) {
         ErrnoHandler(__func__, __FILE__, __LINE__);
     }
 
     // Construct the potential absolute path
+    char temp_path[4096];
     snprintf(temp_path, sizeof(temp_path), "%s/%s", org_dir, root_path);
 
-    char absolute_path[4096];
     // realpath resolves ".." and "." and symlinks to a canonical path
-    if (realpath(temp_path, absolute_path) == NULL) {
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+    char *absolute_path = realpath(temp_path, NULL);
+
+    if (absolute_path == NULL) {
+        if (errno == ENOENT) {
+            absolute_path = path_normalize(temp_path);
+        } else {
+            xfree(root_dir);
+            ErrnoHandler(__func__, __FILE__, __LINE__);
+        }
     }
 
     // Check if the file is inside our project root
     char *relative_path = strstr(absolute_path, root_dir);
-
     if (relative_path != NULL && strcmp(relative_path, root_dir) != 0) {
         // Pointer arithmetic: Skip the root_dir part + 1 for the '/'
         relative_path += strlen(root_dir) + 1;
@@ -102,5 +161,7 @@ char *relative_path_calc(const char *org_dir, const char *root_path) {
         // If paths match exactly, we are at the root
         normalized_path = str_dup(".");
     }
+    xfree(root_dir);
+    xfree(absolute_path);
     return normalized_path;
 }
