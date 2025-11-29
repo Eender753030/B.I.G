@@ -73,10 +73,10 @@ void cmd_status(int argc, char *argv[]) {
     UNUSED(argv);
 
     if (check_init() == NOT_INIT) {
-        NotInitError();
+        error_not_init();
     }
     if (argc > 1) {
-        ErrorCustomMsg("Usage: big status\n");
+        error_custom_msg("Usage: big status\n");
     }
     cd_to_project_root(NULL);
 

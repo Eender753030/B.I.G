@@ -1,11 +1,12 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 // Return codes for initialization checks
-#define INITED 0
-#define NOT_INIT -1
+#define INITED true
+#define NOT_INIT false
 
 // Macro to suppress "unused variable" warnings during compilation
 #define UNUSED(x) (void)(x)
@@ -22,7 +23,7 @@ char *str_dup(const char *string);
  * Traverses upwards looking for the ".big" directory.
  * @return INITED if found, NOT_INIT otherwise.
  */
-int check_init();
+bool check_init();
 
 /**
  * @brief Changes the current working directory to the project root.

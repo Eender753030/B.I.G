@@ -1,15 +1,12 @@
 #include "core/snapshot.h"
 
-#include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "core/blob.h"
 #include "ds/bst.h"
-#include "utils/error_handle.h"
 #include "utils/memory.h"
 #include "utils/utils.h"
 

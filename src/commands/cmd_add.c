@@ -19,7 +19,7 @@
 
 static void check_add_files(const char *path) {
     if (access(".big", F_OK) == 0 && strcmp(path, "..") == 0) {
-        ErrorCustomMsg("Error: '..' is outside project directory.\n");
+        error_custom_msg("Error: '..' is outside project directory.\n");
     }
 }
 
@@ -80,17 +80,17 @@ static void process_dir_or_file(const char *path, snapshot_bst_t *bst, struct st
         if (is_snapshot_bst_contains(bst, path) == true) {
             snapshot_bst_delete(bst, path);
         } else {
-            WarningCustomMsg("Warning: '%s' matches no file or directory.\n", path);
+            warning_custom_msg("Warning: '%s' matches no file or directory.\n", path);
         }
     }
 }
 
 void cmd_add(int argc, char *argv[]) {
     if (check_init() == NOT_INIT) {
-        NotInitError();
+        error_not_init();
     }
     if (argc < 2) {
-        ErrorCustomMsg(
+        error_custom_msg(
             "Usage: big add <file or directory> ...\n"
             "Use 'big add .' in root of project directory to add whole\n");
     }
@@ -102,7 +102,7 @@ void cmd_add(int argc, char *argv[]) {
         delete_mode = true;
         start_index = 2;
         if (argc < 3) {
-            ErrorCustomMsg("Usage: big add -d <file or directory> ...\n");
+            error_custom_msg("Usage: big add -d <file or directory> ...\n");
         }
     }
 

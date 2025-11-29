@@ -18,14 +18,14 @@ static const char usage_hint[] =
     "\tbig status                                         Show the status of files from project "
     "root\n\n";
 
-void ErrnoHandler(const char *func_name, const char *file_name, const int line) {
+void errno_handle(const char *func_name, const char *file_name, const int line) {
     // strerror(errno) converts the error number to a human-readable string
     fprintf(stderr, "Error in function '%s' at line %d of %s: %s\n", func_name, line, file_name,
             strerror(errno));
     exit(EXIT_FAILURE);
 }
 
-void ErrorCustomMsg(const char *msg, ...) {
+void error_custom_msg(const char *msg, ...) {
     va_list args;
     va_start(args, msg);  // Initialize args to store all values after 'msg'
     vprintf(msg, args);
@@ -35,18 +35,19 @@ void ErrorCustomMsg(const char *msg, ...) {
     exit(EXIT_FAILURE);
 }
 
-void WarningCustomMsg(const char *msg, ...) {
+void warning_custom_msg(const char *msg, ...) {
     va_list args;
     va_start(args, msg);
     vprintf(msg, args);
     va_end(args);
 }
-void InputError() {
+
+void error_input() {
     fprintf(stderr, "%s\n", usage_hint);
     exit(EXIT_FAILURE);
 }
 
-void NotInitError() {
+void error_not_init() {
     fprintf(stderr,
             "Error: Not a initalized directory. Use 'big init' to initalize current directory\n");
     exit(EXIT_FAILURE);

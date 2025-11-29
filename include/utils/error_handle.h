@@ -8,7 +8,7 @@
  * @param file_name Source file name (__FILE__).
  * @param line Line number (__LINE__).
  */
-void ErrnoHandler(const char *func_name, const char *file_name, const int line);
+void errno_handle(const char *func_name, const char *file_name, const int line);
 
 /**
  * @brief Prints a formatted custom error message and exits.
@@ -16,18 +16,18 @@ void ErrnoHandler(const char *func_name, const char *file_name, const int line);
  * @param msg Format string.
  * @param ... Variable arguments.
  */
-void ErrorCustomMsg(const char *msg, ...);
+void error_custom_msg(const char *msg, ...);
 
-void WarningCustomMsg(const char *msg, ...);
+void warning_custom_msg(const char *msg, ...);
 
 /**
  * @brief Prints usage instructions (help menu) and exits.
  */
-void InputError();
+void error_input();
 
 /**
  * @brief Prints "Not initialized" error and exits.
  */
-void NotInitError();
+void error_not_init();
 
 #endif

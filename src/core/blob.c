@@ -31,7 +31,7 @@ char *blob_create_from_file(const char *path) {
     if (file_len > 0) {
         if (fread(content, 1, file_len, file) != file_len) {
             fclose(file);
-            ErrorCustomMsg("Failed to read file: %s\n", path);
+            error_custom_msg("Failed to read file: %s\n", path);
         }
     }
     fclose(file);
@@ -42,13 +42,13 @@ char *blob_create_from_file(const char *path) {
     snprintf(object_path, sizeof(object_path), ".big/objects/%s", hash_str);
 
     if (access(".big/objects", F_OK) != 0 && mkdir(".big/objects", 0775) == -1) {
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+        errno_handle(__func__, __FILE__, __LINE__);
     }
 
     if (access(object_path, F_OK) != 0) {
         FILE *obj_file = fopen(object_path, "wb");
         if (obj_file == NULL) {
-            ErrorCustomMsg("Failed to write object file: %s\n", object_path);
+            error_custom_msg("Failed to write object file: %s\n", object_path);
         }
         fwrite(content, 1, file_len, obj_file);
         fclose(obj_file);

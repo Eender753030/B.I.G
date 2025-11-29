@@ -1,8 +1,6 @@
 #ifndef COMMIT_H
 #define COMMIT_H
 
-#include <stdlib.h>
-
 #include "core/snapshot.h"
 
 typedef struct commit_node commit_node_t;

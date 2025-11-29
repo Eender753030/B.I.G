@@ -18,7 +18,7 @@
 void process_path(snapshot_bst_t *bst, const char *root_path, snapshot_bst_t *leader_bst) {
     DIR *dir = opendir(root_path);
     if (dir == NULL) {
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+        errno_handle(__func__, __FILE__, __LINE__);
     }
     struct dirent *file_dirent;
     struct stat file_stat;
@@ -41,7 +41,7 @@ void process_path(snapshot_bst_t *bst, const char *root_path, snapshot_bst_t *le
         }
 
         if (stat(pathbuffer, &file_stat) == -1) {
-            ErrnoHandler(__func__, __FILE__, __LINE__);
+            errno_handle(__func__, __FILE__, __LINE__);
         }
 
         if (S_ISDIR(file_stat.st_mode)) {
@@ -59,7 +59,7 @@ static void write_index(void *file_info, void *file_t) {
     bool is_changed;
     file_info_get_content(file_info, &path, &hash, &is_changed);
     if (fprintf(file_t, "%s\t%s\t%d\n", path, hash, is_changed) == -1) {
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+        errno_handle(__func__, __FILE__, __LINE__);
     }
 }
 
@@ -76,7 +76,7 @@ void save_index_file(snapshot_bst_t *bst) {
     FILE *index_file = xfopen(".big/index", "w");
 
     if (fprintf(index_file, "%lu\n", bst_amount) == -1) {
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+        errno_handle(__func__, __FILE__, __LINE__);
     }
 
     bst_inorder_func(bst, write_index, index_file);
@@ -109,7 +109,7 @@ snapshot_bst_t *read_index_file_from_path(const char *path) {
     }
 
     if (idx != total_size) {
-        fprintf(stderr, "Warning: index file mismatch\n");
+        warning_custom_msg("Warning: index file mismatch\n");
     }
 
     fclose(index_file);
@@ -128,7 +128,7 @@ snapshot_bst_t *read_index_file() {
 static void process_path_projectdir(snapshot_bst_t *bst, const char *root_path) {
     DIR *dir = opendir(root_path);
     if (dir == NULL) {
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+        errno_handle(__func__, __FILE__, __LINE__);
     }
     struct dirent *file_dirent;
     struct stat file_stat;
@@ -147,7 +147,7 @@ static void process_path_projectdir(snapshot_bst_t *bst, const char *root_path) 
         }
 
         if (stat(pathbuffer, &file_stat) == -1) {
-            ErrnoHandler(__func__, __FILE__, __LINE__);
+            errno_handle(__func__, __FILE__, __LINE__);
         }
 
         if (S_ISDIR(file_stat.st_mode)) {

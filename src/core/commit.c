@@ -103,7 +103,7 @@ static char *log_file_handle() {
     if ((c = (char)fgetc(log_file)) == EOF) {
         fclose(log_file);
         remove(".big/temp.txt");
-        ErrorCustomMsg("Commit operation cancelled\n");
+        error_custom_msg("Commit operation cancelled\n");
     }
 
     size_t start_pos = (size_t)(ftell(log_file) - 1);
@@ -126,21 +126,21 @@ static char *log_from_editor() {
     pid = fork();
 
     if (pid == -1) {
-        ErrorCustomMsg("Error: can not create child process\n");
+        error_custom_msg("Error: can not create child process\n");
     } else if (pid == 0) {
         char *argv[] = {"nano", (char *)".big/temp.txt", NULL};
         FILE *temp_log_file = xfopen(".big/temp.txt", "wb");
         fputs("// Write down your commit log below this line\n", temp_log_file);
         fclose(temp_log_file);
         execvp("nano", argv);
-        ErrorCustomMsg("Error: can not open nano editor for commit log\n");
+        error_custom_msg("Error: can not open nano editor for commit log\n");
     } else {
         int status;
         wait(&status);
     }
 
     if (access(".big/temp.txt", F_OK) == -1) {
-        ErrorCustomMsg("Commit operation cancelled\n");
+        error_custom_msg("Commit operation cancelled\n");
     }
     char *log = log_file_handle();
 
@@ -201,7 +201,7 @@ void save_commit_obj(commit_node_t *node) {
     char commit_dir[2048] = {0};
     snprintf(commit_dir, sizeof(commit_dir), ".big/objects/%s", node->commit_hash);
     if (mkdir(commit_dir, 0775) == -1) {
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+        errno_handle(__func__, __FILE__, __LINE__);
     }
 
     uint64_t content_len;
@@ -213,7 +213,7 @@ void save_commit_obj(commit_node_t *node) {
     FILE *list_file = xfopen(buffer, "wb");
     uint64_t write_bytes = fwrite(index_content, 1, content_len, list_file);
     if (write_bytes != content_len) {
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+        errno_handle(__func__, __FILE__, __LINE__);
     }
     fclose(list_file);
 
