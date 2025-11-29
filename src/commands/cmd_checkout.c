@@ -102,17 +102,25 @@ void cmd_checkout(int argc, char *argv[]) {
 
     cd_to_project_root(NULL);
 
+    char *target_hash = argv[1];
+
+    char target_list_path[1024];
+    snprintf(target_list_path, sizeof(target_list_path), ".big/objects/%s/list", target_hash);
+    if (access(target_list_path, F_OK) != 0) {
+        error_custom_msg("Error: Target commit '%s' does not exist.\n", target_hash);
+    }
+
     char *leader_hash = load_leader();
     if (leader_hash == NULL) {
         error_custom_msg("No commit\n");
     }
-    char path[1024];
-    snprintf(path, sizeof(path), ".big/objects/%s/list", leader_hash);
+    char leader_list_path[1024];
+    snprintf(leader_list_path, sizeof(leader_list_path), ".big/objects/%s/list", leader_hash);
     xfree(leader_hash);
 
     snapshot_bst_t *dir_bst = snapshot_bst_create_from_projectdir();
     snapshot_bst_t *index_bst = read_index_file();
-    snapshot_bst_t *leader_bst = read_index_file_from_path(path);
+    snapshot_bst_t *leader_bst = read_index_file_from_path(leader_list_path);
 
     if (is_same_bst(leader_bst, index_bst, is_same_file_info) == false ||
         search_and_cmp_is_same(index_bst, dir_bst) == false) {
@@ -123,22 +131,12 @@ void cmd_checkout(int argc, char *argv[]) {
             "Error: There are changes not commit. Please commit first or discard changes\n");
     }
 
-    if (access(path, F_OK) != 0) {
-        snapshot_bst_free(&leader_bst);
-        snapshot_bst_free(&index_bst);
-        snapshot_bst_free(&dir_bst);
-        error_custom_msg("Error: commit does not exist\n");
-    }
-
-    char *target_hash = argv[1];
-
     bst_inorder_func(index_bst, delete_files, NULL);
 
     snapshot_bst_t *dir_path_bst = snapshot_bst_create_dir_path();
     delete_dirs(dir_path_bst);
 
-    snprintf(path, sizeof(path), ".big/objects/%s/list", target_hash);
-    snapshot_bst_t *target_commit_bst = read_index_file_from_path(path);
+    snapshot_bst_t *target_commit_bst = read_index_file_from_path(target_list_path);
     bst_inorder_func(target_commit_bst, restore_files, NULL);
 
     update_leader_with_hash(target_hash);
