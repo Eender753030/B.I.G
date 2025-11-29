@@ -13,10 +13,14 @@ FILE *_xfopen(const char *target_file_name, const char *modes, const char *func_
 
 long _xftell(FILE *file, const char *func_name, const char *file_name, const int line);
 
+char *_xgetcwd(const char *func_name, const char *file_name, const int line);
+
 // Macro to capture call site information
 #define xfopen(f, m) _xfopen((f), (m), __func__, __FILE__, __LINE__)
 
 #define xftell(f) _xftell((f), __func__, __FILE__, __LINE__)
+
+#define xgetcwd() _xgetcwd(__func__, __FILE__, __LINE__)
 
 uint64_t get_file_len(FILE *file);
 

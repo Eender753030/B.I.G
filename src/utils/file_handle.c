@@ -16,7 +16,7 @@ FILE *_xfopen(const char *target_file_name, const char *modes, const char *func_
               const char *file_name, const int line) {
     FILE *file = fopen(target_file_name, modes);
     if (file == NULL) {
-        ErrnoHandler(func_name, file_name, line);
+        errno_handle(func_name, file_name, line);
     }
     return file;
 }
@@ -24,9 +24,17 @@ FILE *_xfopen(const char *target_file_name, const char *modes, const char *func_
 long _xftell(FILE *file, const char *func_name, const char *file_name, const int line) {
     long ftell_val = ftell(file);
     if (ftell_val == -1L) {
-        ErrnoHandler(func_name, file_name, line);
+        errno_handle(func_name, file_name, line);
     }
     return ftell_val;
+}
+
+char *_xgetcwd(const char *func_name, const char *file_name, const int line) {
+    char *cwd = getcwd(NULL, 0);
+    if (cwd == NULL) {
+        errno_handle(func_name, file_name, line);
+    }
+    return cwd;
 }
 
 uint64_t get_file_len(FILE *file) {
@@ -54,7 +62,7 @@ char *read_whole_file(const char *file_name, uint64_t *len) {
     char *content = xmalloc(file_len + 1);
     uint64_t bytes_read = fread(content, 1, file_len, file);
     if (bytes_read != file_len) {
-        ErrnoHandler(__func__, __FILE__, __LINE__);
+        errno_handle(__func__, __FILE__, __LINE__);
     }
     content[file_len] = '\0';  // Ensure valid C-string
     fclose(file);
@@ -81,7 +89,7 @@ void mk_dir_and_file(const char *path, const char *content) {
         if (mkdir(temp_path, 0775) == -1) {
             // It's okay if the directory already exists (EEXIST)
             if (errno != EEXIST) {
-                ErrnoHandler(__func__, __FILE__, __LINE__);
+                errno_handle(__func__, __FILE__, __LINE__);
             }
         }
         *slash_pos = '/';  // Restore and move to next level
@@ -130,10 +138,7 @@ static char *path_normalize(const char *path) {
 char *relative_path_calc(const char *org_dir, const char *root_path) {
     char *normalized_path;
 
-    char *root_dir = getcwd(NULL, 0);
-    if (root_dir == NULL) {
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-    }
+    char *root_dir = xgetcwd();
 
     // Construct the potential absolute path
     char temp_path[4096];
@@ -147,7 +152,7 @@ char *relative_path_calc(const char *org_dir, const char *root_path) {
             absolute_path = path_normalize(temp_path);
         } else {
             xfree(root_dir);
-            ErrnoHandler(__func__, __FILE__, __LINE__);
+            errno_handle(__func__, __FILE__, __LINE__);
         }
     }
 

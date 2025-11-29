@@ -1,15 +1,16 @@
 #include "utils/utils.h"
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
 #include "utils/error_handle.h"
+#include "utils/file_handle.h"
 #include "utils/memory.h"
 
 char *str_dup(const char *string) {
@@ -21,15 +22,11 @@ char *str_dup(const char *string) {
     return new_string;
 }
 
-int check_init() {
-    char org_dir[4096];
-
+bool check_init() {
     // Save current directory to return later
-    if (getcwd(org_dir, 4096) == NULL) {
-        ErrnoHandler(__func__, __FILE__, __LINE__);
-    }
-    char cwd[4096];
+    char *org_dir = xgetcwd();
 
+    char cwd[4096];
     // Traverse up the directory tree until ".big" is found or root is reached
     do {
         getcwd(cwd, 4096);  // Get current directory
@@ -37,21 +34,20 @@ int check_init() {
         // Check if ".big" exists in the current level
         if (access(".big", F_OK) != -1) {
             chdir(org_dir);  // Return to original directory before exiting
+            xfree(org_dir);
             return INITED;
         }
         chdir("..");  // Move to parent directory
     } while (strcmp(cwd, "/"));  // Stop if we hit the root directory "/"
 
+    xfree(org_dir);
     return NOT_INIT;
 }
 
 void cd_to_project_root(char **org_dir) {
     // If the caller requested the original path, save it first
     if (org_dir != NULL) {
-        *org_dir = getcwd(NULL, 0);
-        if (*org_dir == NULL) {
-            ErrnoHandler(__func__, __FILE__, __LINE__);
-        }
+        *org_dir = xgetcwd();
     }
 
     char current_dir[4096];
@@ -59,15 +55,15 @@ void cd_to_project_root(char **org_dir) {
     // Keep moving up ("..") until we find the ".big" folder
     while (access(".big", F_OK) == -1) {
         if (getcwd(current_dir, sizeof(current_dir)) == NULL) {
-            ErrnoHandler(__func__, __FILE__, __LINE__);
+            errno_handle(__func__, __FILE__, __LINE__);
         }
 
         // Safety check: If we hit root "/" and still haven't found .big, it's an error
         if (strcmp(current_dir, "/") == 0) {
-            ErrorCustomMsg("Error: can not cd to outside the root directory\n");
+            error_custom_msg("Error: can not cd to outside the root directory\n");
         }
         if (chdir("..") == -1) {
-            ErrnoHandler(__func__, __FILE__, __LINE__);
+            errno_handle(__func__, __FILE__, __LINE__);
         }
         // Now the CWD (Current Working Directory) is the project root
     }

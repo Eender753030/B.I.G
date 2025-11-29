@@ -19,7 +19,7 @@ static inline void print_log(commit_node_t *node) {
 
 void cmd_log(int argc, char *argv[]) {
     if (check_init() == NOT_INIT) {
-        NotInitError();
+        error_not_init();
     }
     long amount;
 
@@ -30,17 +30,18 @@ void cmd_log(int argc, char *argv[]) {
         if (*argv[1] == '-' && *c >= '0' && *c <= '9') {
             for (; *c != '\0'; c++) {
                 if (*c < '0' || *c > '9')
-                    ErrorCustomMsg("'%s' is not a positive integer\n", argv[1] + 1);
+                    error_custom_msg("'%s' is not a positive integer\n", argv[1] + 1);
             }
             amount = strtol(argv[1] + 1, NULL, 10);
         } else
-            ErrorCustomMsg("Usage: big log [-<amount>]\n");
+            error_custom_msg("Usage: big log [-<amount>]\n");
     } else
-        ErrorCustomMsg("Usage: big log [-<amount>]\n");
+        error_custom_msg("Usage: big log [-<amount>]\n");
 
     char *leader_id = load_leader();
-    if (leader_id == NULL)
-        ErrorCustomMsg("No commit\n");
+    if (leader_id == NULL) {
+        error_custom_msg("No commit\n");
+    }
 
     commit_node_t *leader_node;
     if (amount == ALL) {

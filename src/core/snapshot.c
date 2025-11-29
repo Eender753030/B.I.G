@@ -1,15 +1,12 @@
 #include "core/snapshot.h"
 
-#include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "core/blob.h"
 #include "ds/bst.h"
-#include "utils/error_handle.h"
 #include "utils/memory.h"
 #include "utils/utils.h"
 
@@ -50,6 +47,19 @@ static file_info_t *file_info_create_from_projectdir(const char *path) {
 
     new_file_info->path = str_dup(path);
     new_file_info->hash = blob_get_file_hash(path);
+    new_file_info->is_changed = true;
+    return new_file_info;
+}
+
+static file_info_t *file_info_create_only_path(const char *path) {
+    if (path == NULL) {
+        return NULL;
+    }
+
+    file_info_t *new_file_info = xmalloc(sizeof(*new_file_info));
+
+    new_file_info->path = str_dup(path);
+    new_file_info->hash = NULL;
     new_file_info->is_changed = true;
     return new_file_info;
 }
@@ -105,6 +115,16 @@ void snapshot_bst_insert_projectdir(snapshot_bst_t *self, const char *path) {
     }
 
     file_info_t *new_file_info = file_info_create_from_projectdir(path);
+
+    bst_insert(self, new_file_info, equal_handle);
+}
+
+void snapshot_bst_insert_only_path(snapshot_bst_t *self, const char *path) {
+    if (self == NULL || path == NULL) {
+        return;
+    }
+
+    file_info_t *new_file_info = file_info_create_only_path(path);
 
     bst_insert(self, new_file_info, equal_handle);
 }

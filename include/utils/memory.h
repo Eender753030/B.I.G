@@ -1,7 +1,7 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
-#include <stdlib.h>
+#include <stddef.h>
 
 /**
  * @brief Internal function to allocate memory with error handling.

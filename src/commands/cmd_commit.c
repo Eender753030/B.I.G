@@ -13,8 +13,9 @@
 #include "utils/utils.h"
 
 void cmd_commit(int argc, char *argv[]) {
-    if (check_init() == NOT_INIT)
-        NotInitError();
+    if (check_init() == NOT_INIT) {
+        error_not_init();
+    }
 
     char *log_message;
 
@@ -24,7 +25,7 @@ void cmd_commit(int argc, char *argv[]) {
         if (strcmp(argv[1], "-m") == 0 && argc == 3) {
             log_message = argv[2];
         } else {
-            ErrorCustomMsg("Usage: big commit [-m \"<log message>\"]\n");
+            error_custom_msg("Usage: big commit [-m \"<log message>\"]\n");
         }
     }
 
@@ -33,7 +34,7 @@ void cmd_commit(int argc, char *argv[]) {
     snapshot_bst_t *index_bst = read_index_file();
     if (bst_get_amount(index_bst) == 0) {
         snapshot_bst_free(&index_bst);
-        ErrorCustomMsg("Error: Nothing to commit\n");
+        error_custom_msg("Error: Nothing to commit\n");
     }
 
     char *leader_hash = load_leader();
@@ -47,7 +48,7 @@ void cmd_commit(int argc, char *argv[]) {
             xfree(leader_hash);
             snapshot_bst_free(&index_bst);
             snapshot_bst_free(&leader_bst);
-            ErrorCustomMsg("Error: Nothing to commit\n");
+            error_custom_msg("Error: Nothing to commit\n");
         }
 
         snapshot_bst_free(&leader_bst);
