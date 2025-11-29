@@ -232,10 +232,14 @@ void save_commit_obj(commit_node_t *node) {
     xfree(index_content);
 }
 
-void update_leader(commit_node_t *node) {
+void update_leader_with_hash(const char *hash) {
     FILE *leader_file = xfopen(".big/Leader", "w");
-    fprintf(leader_file, "%s\n", node->commit_hash);
+    fprintf(leader_file, "%s\n", hash);
     fclose(leader_file);
+}
+
+void update_leader(commit_node_t *node) {
+    update_leader_with_hash(node->commit_hash);
 }
 
 void get_commit_node_info(commit_node_t *node, char **log, char **datetime, char **hash) {

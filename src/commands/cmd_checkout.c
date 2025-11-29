@@ -4,11 +4,14 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
+#include "core/blob.h"
 #include "core/commit.h"
 #include "core/index.h"
 #include "core/snapshot.h"
 #include "utils/error_handle.h"
+#include "utils/file_handle.h"
 #include "utils/memory.h"
 #include "utils/utils.h"
 
@@ -45,6 +48,45 @@ static bool search_and_cmp_is_same(snapshot_bst_t *bst1, snapshot_bst_t *bst2) {
     return true;
 }
 
+static void delete_files(void *data, void *args) {
+    UNUSED(args);
+
+    file_info_t *file_info = (file_info_t *)data;
+    char *path;
+    file_info_get_content(file_info, &path, NULL, NULL);
+
+    remove(path);
+}
+
+static void restore_files(void *data, void *args) {
+    UNUSED(args);
+
+    file_info_t *file_info = (file_info_t *)data;
+    char *path, *hash;
+    file_info_get_content(file_info, &path, &hash, NULL);
+
+    char *content = blob_read_from_hash(hash);
+    mk_dir_and_file(path, content);
+
+    xfree(content);
+}
+
+static void delete_dirs(snapshot_bst_t *dir_bst) {
+    uint64_t bst_amount = bst_get_amount(dir_bst);
+    if (bst_amount == 0) {
+        return;
+    }
+    file_info_t **file_info_list = (file_info_t **)bst_inorder_to_list(dir_bst);
+
+    for (uint64_t i = bst_amount; i > 0; i--) {
+        char *dir_path;
+        file_info_get_content(file_info_list[i - 1], &dir_path, NULL, NULL);
+        remove(dir_path);
+    }
+
+    xfree(file_info_list);
+}
+
 void cmd_checkout(int argc, char *argv[]) {
     UNUSED(argv);
 
@@ -53,6 +95,9 @@ void cmd_checkout(int argc, char *argv[]) {
     }
     if (argc < 2) {
         error_custom_msg("Usage: big checkout <commit hash>\n");
+    }
+    if (argc > 2) {
+        error_custom_msg("Error: Enter only one target commit hash\n");
     }
 
     cd_to_project_root(NULL);
@@ -78,6 +123,29 @@ void cmd_checkout(int argc, char *argv[]) {
             "Error: There are changes not commit. Please commit first or discard changes\n");
     }
 
+    if (access(path, F_OK) != 0) {
+        snapshot_bst_free(&leader_bst);
+        snapshot_bst_free(&index_bst);
+        snapshot_bst_free(&dir_bst);
+        error_custom_msg("Error: commit does not exist\n");
+    }
+
+    char *target_hash = argv[1];
+
+    bst_inorder_func(index_bst, delete_files, NULL);
+
+    snapshot_bst_t *dir_path_bst = snapshot_bst_create_dir_path();
+    delete_dirs(dir_path_bst);
+
+    snprintf(path, sizeof(path), ".big/objects/%s/list", target_hash);
+    snapshot_bst_t *target_commit_bst = read_index_file_from_path(path);
+    bst_inorder_func(target_commit_bst, restore_files, NULL);
+
+    update_leader_with_hash(target_hash);
+    save_index_file(target_commit_bst);
+
+    snapshot_bst_free(&target_commit_bst);
+    snapshot_bst_free(&dir_path_bst);
     snapshot_bst_free(&leader_bst);
     snapshot_bst_free(&index_bst);
     snapshot_bst_free(&dir_bst);

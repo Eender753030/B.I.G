@@ -51,6 +51,19 @@ static file_info_t *file_info_create_from_projectdir(const char *path) {
     return new_file_info;
 }
 
+static file_info_t *file_info_create_only_path(const char *path) {
+    if (path == NULL) {
+        return NULL;
+    }
+
+    file_info_t *new_file_info = xmalloc(sizeof(*new_file_info));
+
+    new_file_info->path = str_dup(path);
+    new_file_info->hash = NULL;
+    new_file_info->is_changed = true;
+    return new_file_info;
+}
+
 file_info_t *file_info_create_from_index(const char *path, const char *hash, bool is_changed) {
     if (path == NULL || hash == NULL) {
         return NULL;
@@ -102,6 +115,16 @@ void snapshot_bst_insert_projectdir(snapshot_bst_t *self, const char *path) {
     }
 
     file_info_t *new_file_info = file_info_create_from_projectdir(path);
+
+    bst_insert(self, new_file_info, equal_handle);
+}
+
+void snapshot_bst_insert_only_path(snapshot_bst_t *self, const char *path) {
+    if (self == NULL || path == NULL) {
+        return;
+    }
+
+    file_info_t *new_file_info = file_info_create_only_path(path);
 
     bst_insert(self, new_file_info, equal_handle);
 }

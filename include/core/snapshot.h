@@ -22,6 +22,8 @@ void snapshot_bst_insert(snapshot_bst_t *self, const char *path, snapshot_bst_t 
 
 void snapshot_bst_insert_projectdir(snapshot_bst_t *self, const char *path);
 
+void snapshot_bst_insert_only_path(snapshot_bst_t *self, const char *path);
+
 void snapshot_bst_delete(snapshot_bst_t *self, const char *path);
 
 void snapshot_bst_free(snapshot_bst_t **bst);
