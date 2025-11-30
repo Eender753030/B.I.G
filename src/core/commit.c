@@ -251,6 +251,14 @@ void save_commit_obj(commit_node_t *node) {
     xfree(index_content);
 }
 
+void update_leader(const char *branch_name) {
+    FILE *leader_file = xfopen(".big/Leader", "w");
+    if (fprintf(leader_file, "%s\n", branch_name) < 0) {
+        errno_handle(__func__, __FILE__, __LINE__);
+    }
+    fclose(leader_file);
+}
+
 void update_branch_with_hash(const char *hash) {
     if (access(".big/Leader", F_OK) != 0) {
         FILE *leader_file = xfopen(".big/Leader", "w");

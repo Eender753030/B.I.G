@@ -15,6 +15,8 @@ void commit_node_free(commit_node_t **node);
 
 void save_commit_obj(commit_node_t *node);
 
+void update_leader(const char *branch_name);
+
 void update_branch_with_hash(const char *hash);
 
 void update_branch(commit_node_t *node);
