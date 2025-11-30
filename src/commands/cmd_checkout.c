@@ -1,5 +1,6 @@
 #include "commands/cmd_checkout.h"
 
+#include <dirent.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -14,6 +15,26 @@
 #include "utils/file_handle.h"
 #include "utils/memory.h"
 #include "utils/utils.h"
+
+static bool check_is_branch(const char *input) {
+    DIR *ref_dir = opendir(".big/refs");
+    if (ref_dir == NULL) {
+        errno_handle(__func__, __FILE__, __LINE__);
+    }
+    struct dirent *ref;
+    while ((ref = readdir(ref_dir)) != NULL) {
+        if (strcmp(ref->d_name, ".") == 0 || strcmp(ref->d_name, "..") == 0) {
+            continue;
+        }
+
+        if (strcmp(ref->d_name, input) == 0) {
+            closedir(ref_dir);
+            return true;
+        }
+    }
+    closedir(ref_dir);
+    return false;
+}
 
 static bool search_and_cmp_is_same(snapshot_bst_t *bst1, snapshot_bst_t *bst2) {
     uint64_t bst1_amount = bst_get_amount(bst1);
@@ -87,27 +108,46 @@ static void delete_dirs(snapshot_bst_t *dir_bst) {
     xfree(file_info_list);
 }
 
-void cmd_checkout(int argc, char *argv[]) {
-    UNUSED(argv);
+static void create_temp_ref(const char *target_hash) {
+    char temp_ref_path[] = ".big/refs/temp_checkout_ref";
 
+    FILE *temp_ref = xfopen(temp_ref_path, "w");
+
+    if (fprintf(temp_ref, "%s\n", target_hash) < 0) {
+        fclose(temp_ref);
+        errno_handle(__func__, __FILE__, __LINE__);
+    }
+    fclose(temp_ref);
+}
+
+void cmd_checkout(int argc, char *argv[]) {
     if (check_init() == NOT_INIT) {
         error_not_init();
     }
     if (argc < 2) {
-        error_custom_msg("Usage: big checkout <commit hash>\n");
+        error_custom_msg("Usage: big checkout <commit hash or branch name>\n");
     }
     if (argc > 2) {
-        error_custom_msg("Error: Enter only one target commit hash\n");
+        error_custom_msg("Error: Enter only one target commit hash or branch name\n");
     }
 
     cd_to_project_root(NULL);
 
-    char *target_hash = argv[1];
+    bool branch_mode = check_is_branch(argv[1]);
+
+    char *target_hash;
+    if (branch_mode == true) {
+        char branch_path[4096];
+        snprintf(branch_path, sizeof(branch_path), ".big/refs/%s", argv[1]);
+        target_hash = load_ref_hash(branch_path);
+    } else {
+        target_hash = argv[1];
+    }
 
     char target_list_path[1024];
     snprintf(target_list_path, sizeof(target_list_path), ".big/objects/%s/list", target_hash);
     if (access(target_list_path, F_OK) != 0) {
-        error_custom_msg("Error: Target commit '%s' does not exist.\n", target_hash);
+        error_custom_msg("Error: Target commit or branch '%s' does not exist.\n", target_hash);
     }
 
     char *leader_hash = load_leader();
@@ -139,7 +179,14 @@ void cmd_checkout(int argc, char *argv[]) {
     snapshot_bst_t *target_commit_bst = read_index_file_from_path(target_list_path);
     bst_inorder_func(target_commit_bst, restore_files, NULL);
 
-    update_leader_with_hash(target_hash);
+    create_temp_ref(target_hash);
+    if (branch_mode == true) {
+        update_leader(argv[1]);
+        xfree(target_hash);
+        printf("Change to branch: %s\n", argv[1]);
+    } else {
+        update_leader("temp_checkout_ref");
+    }
     save_index_file(target_commit_bst);
 
     snapshot_bst_free(&target_commit_bst);

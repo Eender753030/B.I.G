@@ -6,6 +6,7 @@
 #include "core/commit.h"
 #include "utils/color.h"
 #include "utils/error_handle.h"
+#include "utils/memory.h"
 #include "utils/utils.h"
 
 #define ALL -1
@@ -50,11 +51,14 @@ void cmd_log(int argc, char *argv[]) {
         leader_node = load_parent_info(leader_id, &amount);
     }
 
+    char *current_branch = load_current_branch();
     commit_node_t *current_node = leader_node;
+    printf(COLOR_CYAN "Branch: %s\n" COLOR_END, current_branch);
     while (current_node != NULL) {
         print_log(current_node);
         current_node = get_commit_parent(current_node);
     }
 
+    xfree(current_branch);
     commit_node_free(&leader_node);
 }

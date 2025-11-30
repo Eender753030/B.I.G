@@ -8,7 +8,7 @@
 
 // Usage hint string
 static const char usage_hint[] =
-    "\nUsage: big <command> [<args>]\n\n"
+    "\nUsage: big <command> [-option] [<args>]\n\n"
     "Commands:\n"
     "\tbig init                                           Initialize current directory to project "
     "root\n"
@@ -17,8 +17,10 @@ static const char usage_hint[] =
     "\tbig log [-<amount>]                                Show previous commit logs\n"
     "\tbig status                                         Show the status of files from project "
     "root\n"
-    "\tbig checkout <commit hash>                         Change project root to past commit "
-    "status\n\n";
+    "\tbig checkout <commit hash or branch name>          Change project root to past commit "
+    "status\n"
+    "\tbig branch [-d | -delete] [<branch name>]          List branches or create branch with "
+    "name\n\n";
 
 void errno_handle(const char *func_name, const char *file_name, const int line) {
     // strerror(errno) converts the error number to a human-readable string
