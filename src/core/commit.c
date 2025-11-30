@@ -29,28 +29,37 @@ char *load_leader() {
     if (leader == NULL) {
         return NULL;
     }
-
-    uint64_t leader_id_length = get_file_len(leader);
-    if (leader_id_length == 0) {
-        fclose(leader);
-        return NULL;
+    char branch_name[2048];
+    if (fgets(branch_name, sizeof(branch_name), leader) == NULL) {
+        errno_handle(__func__, __FILE__, __LINE__);
     }
-
-    char *leader_id = xmalloc(leader_id_length + 1);
-
-    uint64_t read_bytes = fread(leader_id, 1, leader_id_length, leader);
     fclose(leader);
-    if (read_bytes != leader_id_length) {
+    branch_name[strcspn(branch_name, "\n")] = '\0';
+
+    char ref_name[4096];
+    snprintf(ref_name, sizeof(ref_name), ".big/refs/%s", branch_name);
+
+    FILE *ref = fopen(ref_name, "r");
+    uint64_t ref_hash_length = get_file_len(ref);
+    if (ref_hash_length == 0) {
+        fclose(ref);
         return NULL;
     }
 
-    leader_id[leader_id_length] = '\0';
+    char *ref_hash = xmalloc(ref_hash_length + 1);
 
-    if (leader_id[leader_id_length - 1] == '\n') {
-        leader_id[read_bytes - 1] = '\0';
+    uint64_t read_bytes = fread(ref_hash, 1, ref_hash_length, ref);
+    fclose(ref);
+    if (read_bytes != ref_hash_length) {
+        return NULL;
     }
 
-    return leader_id;
+    ref_hash[ref_hash_length] = '\0';
+
+    if (ref_hash[ref_hash_length - 1] == '\n') {
+        ref_hash[ref_hash_length - 1] = '\0';
+    }
+    return ref_hash;
 }
 
 commit_node_t *load_parent_info(char *commit_id, long *limit_amount) {
@@ -149,10 +158,20 @@ static char *log_from_editor() {
 }
 
 static char *commit_log_insert(const char *log_message) {
+    char *new_log;
     if (log_message == NULL) {
-        return log_from_editor();
+        new_log = log_from_editor();
+    } else {
+        new_log = str_dup(log_message);
     }
-    return str_dup(log_message);
+
+    for (char *c = new_log; *c != '\0'; c++) {
+        if (*c == '\n') {
+            *c = ' ';
+        }
+    }
+
+    return new_log;
 }
 
 commit_node_t *commit_node_create(const char *log) {
@@ -232,14 +251,61 @@ void save_commit_obj(commit_node_t *node) {
     xfree(index_content);
 }
 
-void update_leader_with_hash(const char *hash) {
-    FILE *leader_file = xfopen(".big/Leader", "w");
-    fprintf(leader_file, "%s\n", hash);
+void update_branch_with_hash(const char *hash) {
+    if (access(".big/leader", F_OK) != 0) {
+        FILE *leader_file = xfopen(".big/Leader", "w");
+        if (fputs("main", leader_file) == EOF) {
+            errno_handle(__func__, __FILE__, __LINE__);
+        }
+        fclose(leader_file);
+    }
+
+    FILE *leader_file = xfopen(".big/Leader", "r");
+    char branch_name[2048];
+    if (fgets(branch_name, sizeof(branch_name), leader_file) == NULL) {
+        errno_handle(__func__, __FILE__, __LINE__);
+    }
     fclose(leader_file);
+
+    branch_name[strcspn(branch_name, "\n")] = '\0';
+
+    char ref_name[4096];
+    snprintf(ref_name, sizeof(ref_name), ".big/refs/%s", branch_name);
+    FILE *ref_file = xfopen(ref_name, "w");
+    fprintf(ref_file, "%s\n", hash);
+    fclose(ref_file);
 }
 
-void update_leader(commit_node_t *node) {
-    update_leader_with_hash(node->commit_hash);
+void update_branch(commit_node_t *node) {
+    update_branch_with_hash(node->commit_hash);
+}
+
+char *load_current_branch() {
+    FILE *leader_file = fopen(".big/Leader", "r");
+    if (leader_file == NULL) {
+        return NULL;
+    }
+
+    uint64_t branch_name_length = get_file_len(leader_file);
+    if (branch_name_length == 0) {
+        return NULL;
+    }
+
+    char *branch_name = xmalloc(branch_name_length + 1);
+
+    uint64_t read_bytes = fread(branch_name, 1, branch_name_length, leader_file);
+    fclose(leader_file);
+    if (read_bytes != branch_name_length) {
+        return NULL;
+    }
+
+    branch_name[branch_name_length] = '\0';
+
+    if (branch_name[branch_name_length - 1] == '\n') {
+        branch_name[branch_name_length - 1] = '\0';
+    }
+
+    return branch_name;
 }
 
 void get_commit_node_info(commit_node_t *node, char **log, char **datetime, char **hash) {

@@ -139,7 +139,7 @@ void cmd_checkout(int argc, char *argv[]) {
     snapshot_bst_t *target_commit_bst = read_index_file_from_path(target_list_path);
     bst_inorder_func(target_commit_bst, restore_files, NULL);
 
-    update_leader_with_hash(target_hash);
+    update_branch_with_hash(target_hash);
     save_index_file(target_commit_bst);
 
     snapshot_bst_free(&target_commit_bst);

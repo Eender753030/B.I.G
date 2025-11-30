@@ -61,7 +61,7 @@ void cmd_commit(int argc, char *argv[]) {
 
     save_commit_obj(new_commit);
 
-    update_leader(new_commit);
+    update_branch(new_commit);
 
     commit_node_free(&new_commit);
 }

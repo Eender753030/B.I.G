@@ -26,5 +26,8 @@ void cmd_init(int argc, char *argv[]) {
     if (mkdir(".big/objects", 0775) == -1) {
         errno_handle(__func__, __FILE__, __LINE__);
     }
+    if (mkdir(".big/refs", 0775) == -1) {
+        errno_handle(__func__, __FILE__, __LINE__);
+    }
     printf("Directory initalize complete\n");
 }
