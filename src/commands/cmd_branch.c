@@ -40,29 +40,12 @@ static void print_branches() {
     xfree(curr_branch);
 }
 
-void cmd_branch(int argc, char *argv[]) {
-    if (check_init() == false) {
-        error_not_init();
-    }
-
-    cd_to_project_root(NULL);
-
-    if (argc > 2) {
-        error_custom_msg("Error: Input only one branch name\n");
-    }
-
-    if (argc == 1) {
-        print_branches();
-        return;
-    }
-
-    char *new_branch_name = argv[1];
-
+static void create_branch(const char *branch_name) {
     char new_ref_path[4096];
-    snprintf(new_ref_path, sizeof(new_ref_path), ".big/refs/%s", new_branch_name);
+    snprintf(new_ref_path, sizeof(new_ref_path), ".big/refs/%s", branch_name);
 
     if (access(new_ref_path, F_OK) == 0) {
-        error_custom_msg("Error: Branch '%s' already exist\n", new_branch_name);
+        error_custom_msg("Error: Branch '%s' already exist\n", branch_name);
     }
 
     char *leader_commit_hash = load_leader();
@@ -75,9 +58,50 @@ void cmd_branch(int argc, char *argv[]) {
         errno_handle(__func__, __FILE__, __LINE__);
     }
 
-    printf("\nBranch '%s' created. Point to commit: " COLOR_BROWN "%s" COLOR_END "\n\n",
-           new_branch_name, leader_commit_hash);
+    printf("Branch '%s' created. Point to commit: " COLOR_BROWN "%s" COLOR_END "\n", branch_name,
+           leader_commit_hash);
 
     xfree(leader_commit_hash);
     fclose(ref_file);
+}
+
+static void delete_branch(const char *branch_name) {
+    char ref_path[4096];
+    snprintf(ref_path, sizeof(ref_path), ".big/refs/%s", branch_name);
+
+    if (access(ref_path, F_OK) != 0) {
+        error_custom_msg("Error: Branch '%s' does not exist\n", branch_name);
+    }
+
+    if (remove(ref_path) == -1) {
+        error_custom_msg("Error: Delete branch '%s' failed\n", branch_name);
+    }
+    printf("Branch '%s' deleted\n", branch_name);
+}
+
+void cmd_branch(int argc, char *argv[]) {
+    if (check_init() == false) {
+        error_not_init();
+    }
+
+    cd_to_project_root(NULL);
+
+    if (argc == 1) {
+        print_branches();
+        return;
+    }
+
+    if (strcmp(argv[1], "-d") == 0 || strcmp(argv[1], "--delete") == 0) {
+        if (argc < 3 || argc > 3) {
+            error_custom_msg("Usage: big branch -d <branch name>\n");
+        }
+        delete_branch(argv[2]);
+        return;
+    }
+
+    if (argc > 2) {
+        error_custom_msg("Usage: big branch <branch name>\n");
+    }
+
+    create_branch(argv[1]);
 }
