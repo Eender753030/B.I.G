@@ -4,6 +4,7 @@
 
 #include "commands/cmd.h"
 #include "commands/cmd_add.h"
+#include "commands/cmd_branch.h"
 #include "commands/cmd_checkout.h"
 #include "commands/cmd_commit.h"
 #include "commands/cmd_init.h"
@@ -17,9 +18,8 @@
  * Ends with {NULL, NULL} as a sentinel.
  */
 static const command_t commands[] = {
-    {"init", cmd_init}, {"add", cmd_add},       {"commit", cmd_commit},
-    {"log", cmd_log},   {"status", cmd_status}, {"checkout", cmd_checkout},
-    {NULL, NULL}};
+    {"init", cmd_init},     {"add", cmd_add},           {"commit", cmd_commit}, {"log", cmd_log},
+    {"status", cmd_status}, {"checkout", cmd_checkout}, {"branch", cmd_branch}, {NULL, NULL}};
 
 /**
  * @brief Main entry point. Dispatches subcommands.

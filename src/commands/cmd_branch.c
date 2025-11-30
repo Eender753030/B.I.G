@@ -1,0 +1,83 @@
+#include "commands/cmd_branch.h"
+
+#include <dirent.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "core/commit.h"
+#include "utils/color.h"
+#include "utils/error_handle.h"
+#include "utils/file_handle.h"
+#include "utils/memory.h"
+#include "utils/utils.h"
+
+static void print_branches() {
+    char *curr_branch = load_current_branch();
+    if (curr_branch == NULL) {
+        error_custom_msg("No commit\n");
+    }
+
+    DIR *ref_dir = opendir(".big/refs");
+    if (ref_dir == NULL) {
+        errno_handle(__func__, __FILE__, __LINE__);
+    }
+    struct dirent *ref;
+    while ((ref = readdir(ref_dir)) != NULL) {
+        if (strcmp(ref->d_name, ".") == 0 || strcmp(ref->d_name, "..") == 0) {
+            continue;
+        }
+
+        if (strcmp(ref->d_name, curr_branch) == 0) {
+            printf("* " COLOR_CYAN "%s\n" COLOR_END, curr_branch);
+        } else {
+            printf("  %s\n", ref->d_name);
+        }
+    }
+    closedir(ref_dir);
+    xfree(curr_branch);
+}
+
+void cmd_branch(int argc, char *argv[]) {
+    if (check_init() == false) {
+        error_not_init();
+    }
+
+    cd_to_project_root(NULL);
+
+    if (argc > 2) {
+        error_custom_msg("Error: Input only one branch name\n");
+    }
+
+    if (argc == 1) {
+        print_branches();
+        return;
+    }
+
+    char *new_branch_name = argv[1];
+
+    char new_ref_path[4096];
+    snprintf(new_ref_path, sizeof(new_ref_path), ".big/refs/%s", new_branch_name);
+
+    if (access(new_ref_path, F_OK) == 0) {
+        error_custom_msg("Error: Branch '%s' already exist\n", new_branch_name);
+    }
+
+    char *leader_commit_hash = load_leader();
+
+    FILE *ref_file = xfopen(new_ref_path, "w");
+
+    if (fprintf(ref_file, "%s\n", leader_commit_hash) < 0) {
+        xfree(leader_commit_hash);
+        fclose(ref_file);
+        errno_handle(__func__, __FILE__, __LINE__);
+    }
+
+    printf("\nBranch '%s' created. Point to commit: " COLOR_BROWN "%s" COLOR_END "\n\n",
+           new_branch_name, leader_commit_hash);
+
+    xfree(leader_commit_hash);
+    fclose(ref_file);
+}
