@@ -252,7 +252,7 @@ void save_commit_obj(commit_node_t *node) {
 }
 
 void update_branch_with_hash(const char *hash) {
-    if (access(".big/leader", F_OK) != 0) {
+    if (access(".big/Leader", F_OK) != 0) {
         FILE *leader_file = xfopen(".big/Leader", "w");
         if (fputs("main", leader_file) == EOF) {
             errno_handle(__func__, __FILE__, __LINE__);
