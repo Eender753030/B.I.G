@@ -95,6 +95,9 @@ void cmd_branch(int argc, char *argv[]) {
         if (argc < 3 || argc > 3) {
             error_custom_msg("Usage: big branch -d <branch name>\n");
         }
+        if (strcmp(argv[2], "Leader") == 0 || strcmp(argv[2], "temp_checkout_ref") == 0) {
+            error_custom_msg("'%s' is a unvalid name of branch\n", argv[2]);
+        }
         delete_branch(argv[2]);
         return;
     }
@@ -102,6 +105,8 @@ void cmd_branch(int argc, char *argv[]) {
     if (argc > 2) {
         error_custom_msg("Usage: big branch <branch name>\n");
     }
-
+    if (strcmp(argv[1], "Leader") == 0 || strcmp(argv[1], "temp_checkout_ref") == 0) {
+        error_custom_msg("'%s' as name is not allowed\n", argv[1]);
+    }
     create_branch(argv[1]);
 }

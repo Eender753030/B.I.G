@@ -308,6 +308,34 @@ char *load_current_branch() {
     return branch_name;
 }
 
+char *load_ref_hash(const char *path) {
+    FILE *ref_file = fopen(path, "r");
+    if (ref_file == NULL) {
+        return NULL;
+    }
+
+    uint64_t hash_length = get_file_len(ref_file);
+    if (hash_length == 0) {
+        return NULL;
+    }
+
+    char *hash = xmalloc(hash_length + 1);
+
+    uint64_t read_bytes = fread(hash, 1, hash_length, ref_file);
+    fclose(ref_file);
+    if (read_bytes != hash_length) {
+        return NULL;
+    }
+
+    hash[hash_length] = '\0';
+
+    if (hash[hash_length - 1] == '\n') {
+        hash[hash_length - 1] = '\0';
+    }
+
+    return hash;
+}
+
 void get_commit_node_info(commit_node_t *node, char **log, char **datetime, char **hash) {
     if (node == NULL) {
         return;

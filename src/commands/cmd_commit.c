@@ -39,6 +39,29 @@ void cmd_commit(int argc, char *argv[]) {
 
     char *leader_hash = load_leader();
     if (leader_hash != NULL) {
+        if (access(".big/refs/temp_checkout_ref", F_OK) == 0) {
+            warning_custom_msg(
+                "Warning: Are sure you really want to commit? This will replace all commits after "
+                "this\nYou can use 'big checkout Leader' Back to top commit\nIf you do want to. "
+                "Please enter current branch name: ");
+
+            char user_input[4096];
+            char *curr_branch_name = load_current_branch();
+            fgets(user_input, sizeof(user_input), stdin);
+            user_input[strcspn(user_input, "\n")] = '\0';
+
+            if (strcmp(user_input, curr_branch_name) != 0) {
+                snapshot_bst_free(&index_bst);
+                xfree(curr_branch_name);
+                error_custom_msg("Commit operation cancelled");
+            }
+
+            xfree(curr_branch_name);
+            xfree(leader_hash);
+            leader_hash = load_ref_hash(".big/refs/temp_checkout_ref");
+            remove(".big/refs/temp_checkout_ref");
+        }
+
         char leader_list_path[1024];
         snprintf(leader_list_path, sizeof(leader_list_path), ".big/objects/%s/list", leader_hash);
 

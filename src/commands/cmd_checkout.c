@@ -87,6 +87,18 @@ static void delete_dirs(snapshot_bst_t *dir_bst) {
     xfree(file_info_list);
 }
 
+static void create_temp_ref(const char *target_hash) {
+    char temp_ref_path = ".big/refs/temp_checkout_ref";
+
+    FILE *temp_ref = xfopen(temp_ref_path, "w");
+
+    if (fprintf(temp_ref, "%s\n", target_hash) < 0) {
+        fclose(temp_ref);
+        errno_handle(__func__, __FILE__, __LINE__);
+    }
+    fclose(temp_ref);
+}
+
 void cmd_checkout(int argc, char *argv[]) {
     UNUSED(argv);
 
@@ -102,8 +114,12 @@ void cmd_checkout(int argc, char *argv[]) {
 
     cd_to_project_root(NULL);
 
-    char *target_hash = argv[1];
-
+    char *target_hash;
+    if (strcmp(argv[1], "Leader") == 0) {
+        target_hash = load_leader();
+    } else {
+        target_hash = argv[1];
+    }
     char target_list_path[1024];
     snprintf(target_list_path, sizeof(target_list_path), ".big/objects/%s/list", target_hash);
     if (access(target_list_path, F_OK) != 0) {
@@ -139,7 +155,9 @@ void cmd_checkout(int argc, char *argv[]) {
     snapshot_bst_t *target_commit_bst = read_index_file_from_path(target_list_path);
     bst_inorder_func(target_commit_bst, restore_files, NULL);
 
-    update_branch_with_hash(target_hash);
+    if (strcmp(argv[1], "Leader") != 0) {
+        create_temp_ref(target_hash);
+    }
     save_index_file(target_commit_bst);
 
     snapshot_bst_free(&target_commit_bst);
