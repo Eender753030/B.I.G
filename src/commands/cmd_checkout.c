@@ -86,8 +86,9 @@ static void restore_files(void *data, void *args) {
     char *path, *hash;
     file_info_get_content(file_info, &path, &hash, NULL);
 
-    char *content = blob_read_from_hash(hash);
-    mk_dir_and_file(path, content);
+    uint64_t content_len = 0;
+    char *content = blob_read_from_hash(hash, &content_len);
+    mk_dir_and_file(path, content, content_len);
 
     xfree(content);
 }

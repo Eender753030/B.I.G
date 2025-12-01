@@ -81,7 +81,7 @@ char *blob_get_file_hash(const char *path) {
     return hash_str;
 }
 
-char *blob_read_from_hash(const char *hash) {
+char *blob_read_from_hash(const char *hash, uint64_t *len) {
     char object_path[4096];
     snprintf(object_path, sizeof(object_path), ".big/objects/%s", hash);
 
@@ -89,5 +89,5 @@ char *blob_read_from_hash(const char *hash) {
         return NULL;
     }
 
-    return read_whole_file(object_path, NULL);
+    return read_whole_file(object_path, len);
 }

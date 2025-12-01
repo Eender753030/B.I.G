@@ -73,7 +73,7 @@ char *read_whole_file(const char *file_name, uint64_t *len) {
     return content;
 }
 
-void mk_dir_and_file(const char *path, const char *content) {
+void mk_dir_and_file(const char *path, const char *content, uint64_t content_len) {
     char *temp_path = str_dup(path);
 
     /* * [Algorithm] Recursive Directory Creation
@@ -97,7 +97,7 @@ void mk_dir_and_file(const char *path, const char *content) {
 
     // Write the actual file content
     FILE *target_file = xfopen(path, "wb");
-    fwrite(content, 1, strlen(content), target_file);
+    fwrite(content, 1, content_len, target_file);
     fclose(target_file);
 
     xfree(temp_path);

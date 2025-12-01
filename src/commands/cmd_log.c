@@ -14,8 +14,8 @@
 static inline void print_log(commit_node_t *node) {
     char *log, *datetime, *commit_hash;
     get_commit_node_info(node, &log, &datetime, &commit_hash);
-    printf(COLOR_BROWN "Commit: %s\t" COLOR_END "Date: %s\tLog: \"%s\"\n", commit_hash, datetime,
-           log);
+    printf(COLOR_BROWN "Commit: %16s\t" COLOR_END "Date: %19s\tLog: \"%s\"\n", commit_hash,
+           datetime, log);
 }
 
 void cmd_log(int argc, char *argv[]) {

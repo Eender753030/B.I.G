@@ -37,7 +37,7 @@ char *read_whole_file(const char *file_name, uint64_t *len);
  * @param path Full path including filename.
  * @param content Content to write to the file.
  */
-void mk_dir_and_file(const char *path, const char *content);
+void mk_dir_and_file(const char *path, const char *content, uint64_t content_len);
 
 /**
  * @brief Calculates the relative path of a file from the project root.
