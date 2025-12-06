@@ -15,7 +15,19 @@
 #include "utils/file_handle.h"
 #include "utils/memory.h"
 
-void process_path(snapshot_bst_t *bst, const char *root_path, snapshot_bst_t *leader_bst) {
+static void _process_parser(snapshot_bst_t *bst, const char *path, bool on_file, bool on_dir,
+                            void *args) {
+    if (args) {
+        snapshot_bst_insert(bst, path, (snapshot_bst_t *)args);
+    } else if (on_file == true) {
+        snapshot_bst_insert_projectdir(bst, path);
+    } else if (on_dir == true) {
+        snapshot_bst_insert_only_path(bst, path);
+    }
+}
+
+static void _process_handler(snapshot_bst_t *bst, const char *root_path, bool on_file, bool on_dir,
+                             void *args) {
     DIR *dir = opendir(root_path);
     if (dir == NULL) {
         errno_handle(__func__, __FILE__, __LINE__);
@@ -45,9 +57,14 @@ void process_path(snapshot_bst_t *bst, const char *root_path, snapshot_bst_t *le
         }
 
         if (S_ISDIR(file_stat.st_mode)) {
-            process_path(bst, pathbuffer, leader_bst);
+            _process_handler(bst, pathbuffer, on_file, on_dir, args);
+            if (on_dir == true) {
+                _process_parser(bst, pathbuffer, NULL, on_dir, args);
+            }
         } else {
-            snapshot_bst_insert(bst, pathbuffer, leader_bst);
+            if (on_file == true) {
+                _process_parser(bst, pathbuffer, on_file, NULL, args);
+            }
         }
     }
 
@@ -125,73 +142,20 @@ snapshot_bst_t *read_index_file() {
     return read_index_file_from_path(".big/index");
 }
 
-static void process_path_projectdir(snapshot_bst_t *bst, const char *root_path) {
-    DIR *dir = opendir(root_path);
-    if (dir == NULL) {
-        errno_handle(__func__, __FILE__, __LINE__);
-    }
-    struct dirent *file_dirent;
-    struct stat file_stat;
-
-    while ((file_dirent = readdir(dir)) != NULL) {
-        if (strcmp(file_dirent->d_name, ".") == 0 || strcmp(file_dirent->d_name, "..") == 0 ||
-            strcmp(file_dirent->d_name, ".big") == 0 || strcmp(file_dirent->d_name, "big") == 0) {
-            continue;
-        }
-        char pathbuffer[1024];
-
-        if (strcmp(root_path, ".") == 0) {
-            snprintf(pathbuffer, sizeof(pathbuffer), "%s", file_dirent->d_name);
-        } else {
-            snprintf(pathbuffer, sizeof(pathbuffer), "%s/%s", root_path, file_dirent->d_name);
-        }
-
-        if (stat(pathbuffer, &file_stat) == -1) {
-            errno_handle(__func__, __FILE__, __LINE__);
-        }
-
-        if (S_ISDIR(file_stat.st_mode)) {
-            process_path_projectdir(bst, pathbuffer);
-        } else {
-            snapshot_bst_insert_projectdir(bst, pathbuffer);
-        }
-    }
-
-    closedir(dir);
-}
-
-static void process_dir_path(snapshot_bst_t *bst, const char *root_path) {
-    DIR *dir = opendir(root_path);
-    if (dir == NULL) {
+void process_path(snapshot_bst_t *bst, const char *path, snapshot_bst_t *leader_bst) {
+    if (bst == NULL || path == NULL) {
         return;
     }
-    struct dirent *file_dirent;
-    struct stat file_stat;
 
-    while ((file_dirent = readdir(dir)) != NULL) {
-        if (strcmp(file_dirent->d_name, ".") == 0 || strcmp(file_dirent->d_name, "..") == 0 ||
-            strcmp(file_dirent->d_name, ".big") == 0 || strcmp(file_dirent->d_name, "big") == 0) {
-            continue;
-        }
-        char pathbuffer[1024];
+    _process_handler(bst, path, true, false, (void *)leader_bst);
+}
 
-        if (strcmp(root_path, ".") == 0) {
-            snprintf(pathbuffer, sizeof(pathbuffer), "%s", file_dirent->d_name);
-        } else {
-            snprintf(pathbuffer, sizeof(pathbuffer), "%s/%s", root_path, file_dirent->d_name);
-        }
+static void process_path_projectdir(snapshot_bst_t *bst, const char *path) {
+    _process_handler(bst, path, true, false, NULL);
+}
 
-        if (stat(pathbuffer, &file_stat) == -1) {
-            errno_handle(__func__, __FILE__, __LINE__);
-        }
-
-        if (S_ISDIR(file_stat.st_mode)) {
-            process_dir_path(bst, pathbuffer);
-            snapshot_bst_insert_only_path(bst, pathbuffer);
-        }
-    }
-
-    closedir(dir);
+static void process_dir_path(snapshot_bst_t *bst, const char *path) {
+    _process_handler(bst, path, false, true, NULL);
 }
 
 snapshot_bst_t *snapshot_bst_create_from_projectdir() {
