@@ -10,16 +10,22 @@
 #include "utils/utils.h"
 
 void cmd_init(int argc, char *argv[]) {
+    // argv is not need
     UNUSED(argv);
 
+    // Make sure is only 'big init'
     if (argc > 1) {
         error_custom_msg("Usage: big init\n");
     }
 
+    // Exit if .big/ is already exist
     if (access(".big", F_OK) != -1) {
         error_custom_msg("Error: Directory already initalize. Operation cancelled\n");
     }
     printf("Start to initalize B.I.G structure...\n");
+
+    // Initalize current directory to project directory
+    // Create essential directories
     if (mkdir(".big", 0775) == -1) {
         errno_handle(__func__, __FILE__, __LINE__);
     }
