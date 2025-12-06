@@ -17,11 +17,12 @@
 #include "utils/memory.h"
 #include "utils/utils.h"
 
+// commit_node structure for every commit
 struct commit_node {
-    char *log;
-    char *datetime;
-    char *commit_hash;
-    struct commit_node *parent;
+    char *log;                   // log in commit
+    char *datetime;              // commit created time
+    char *commit_hash;           // Every commit has different unique hash
+    struct commit_node *parent;  // point to parent commit
 };
 
 char *load_leader() {
@@ -30,13 +31,16 @@ char *load_leader() {
         return NULL;
     }
     char branch_name[2048];
+    // Get current branch name from Leader(HEAD) file
     if (fgets(branch_name, sizeof(branch_name), leader) == NULL) {
         errno_handle(__func__, __FILE__, __LINE__);
     }
     fclose(leader);
+    // Replace the '\n' to '\0'
     branch_name[strcspn(branch_name, "\n")] = '\0';
 
     char ref_name[4096];
+    // Combine the path to branch
     snprintf(ref_name, sizeof(ref_name), ".big/refs/%s", branch_name);
 
     FILE *ref = fopen(ref_name, "r");
@@ -47,7 +51,7 @@ char *load_leader() {
     }
 
     char *ref_hash = xmalloc(ref_hash_length + 1);
-
+    // Read newest commit hash from branch
     uint64_t read_bytes = fread(ref_hash, 1, ref_hash_length, ref);
     fclose(ref);
     if (read_bytes != ref_hash_length) {
@@ -55,13 +59,14 @@ char *load_leader() {
     }
 
     ref_hash[ref_hash_length] = '\0';
-
+    // Double check for ensure '\0'
     if (ref_hash[ref_hash_length - 1] == '\n') {
         ref_hash[ref_hash_length - 1] = '\0';
     }
     return ref_hash;
 }
 
+// limit_amount for prevent load all parents of commit
 commit_node_t *load_parent_info(char *commit_id, long *limit_amount) {
     if (limit_amount != NULL && ((*limit_amount)--) <= 0) {
         xfree(commit_id);
@@ -73,19 +78,24 @@ commit_node_t *load_parent_info(char *commit_id, long *limit_amount) {
     parent_node->commit_hash = commit_id;
 
     char parent_obj[1024];
+    // Combine the path to parent metadata
     snprintf(parent_obj, 1024, ".big/objects/%s/info", commit_id);
     FILE *parent_info = xfopen(parent_obj, "r");
 
     char buffer[128] = {0};
 
+    // Get parent node's datetime
     fgets(buffer, 128, parent_info);
     buffer[strcspn(buffer, "\n")] = '\0';
     parent_node->datetime = str_dup(buffer);
 
+    // Get parent's parent
     if (fgets(buffer, 128, parent_info) != NULL) {
+        // if the string is not "null\n" means it has parent
         if (strcmp(buffer, "null\n") != 0) {
             buffer[strcspn(buffer, "\n")] = '\0';
             char *parent_commit_id = str_dup(buffer);
+            // Continue to get parent
             parent_node->parent = load_parent_info(parent_commit_id, limit_amount);
         } else {
             parent_node->parent = NULL;
@@ -95,6 +105,7 @@ commit_node_t *load_parent_info(char *commit_id, long *limit_amount) {
     uint64_t log_length = get_file_len(parent_info) - 1;
     parent_node->log = xmalloc(log_length + 1);
 
+    // Read last file content that is log
     fread(parent_node->log, 1, log_length, parent_info);
     parent_node->log[log_length] = '\0';
 
@@ -103,25 +114,27 @@ commit_node_t *load_parent_info(char *commit_id, long *limit_amount) {
     return parent_node;
 }
 
+// helper function for read log from temp file create from nano(editor)
 static char *log_file_handle() {
     FILE *log_file = xfopen(".big/temp.txt", "rb");
 
     char c;
+    // First line is hint so skip it
     while ((c = (char)fgetc(log_file)) != EOF && c != '\n');
-
+    // If Second line reach to end of file means no input log, cancel 'commit' command
     if ((c = (char)fgetc(log_file)) == EOF) {
         fclose(log_file);
         remove(".big/temp.txt");
         error_custom_msg("Commit operation cancelled\n");
     }
+    // Move back two head of second line because of the check
+    fseek(log_file, -1, SEEK_CUR);
 
-    size_t start_pos = (size_t)(ftell(log_file) - 1);
-    fseek(log_file, 0, SEEK_END);
-    size_t end_pos = (size_t)ftell(log_file);
-    size_t content_length = end_pos - start_pos;
+    uint64_t content_length = get_file_len(log_file);
+
     char *log = xmalloc(content_length);
 
-    fseek(log_file, (long)start_pos, SEEK_SET);
+    // Read all content below first line
     fread(log, 1, content_length, log_file);
     log[content_length - 1] = '\0';
 
@@ -129,21 +142,27 @@ static char *log_file_handle() {
     return log;
 }
 
+// Helper function if use editor to write log
 static char *log_from_editor() {
     pid_t pid;
 
+    // Use fork to create child process to execute nano(editor)
     pid = fork();
 
     if (pid == -1) {
         error_custom_msg("Error: can not create child process\n");
     } else if (pid == 0) {
-        char *argv[] = {"nano", (char *)".big/temp.txt", NULL};
+        // Child fork to execute nano(editor)
+        char *argv[] = {"nano", ".big/temp.txt", NULL};
+        // Create a temp file and write hint into it
         FILE *temp_log_file = xfopen(".big/temp.txt", "wb");
         fputs("// Write down your commit log below this line\n", temp_log_file);
         fclose(temp_log_file);
-        execvp("nano", argv);
+        // execute nano .big/temp.txt;
+        execvp("nano", argv);  // Child end when nano close and get kill
         error_custom_msg("Error: can not open nano editor for commit log\n");
     } else {
+        // wait for child
         int status;
         wait(&status);
     }
@@ -151,12 +170,13 @@ static char *log_from_editor() {
     if (access(".big/temp.txt", F_OK) == -1) {
         error_custom_msg("Commit operation cancelled\n");
     }
-    char *log = log_file_handle();
+    char *log = log_file_handle();  // Get log from helper
 
-    remove(".big/temp.txt");
+    remove(".big/temp.txt");  // Remove temp file
     return log;
 }
 
+// Helper for parse user command
 static char *commit_log_insert(const char *log_message) {
     char *new_log;
     if (log_message == NULL) {
@@ -165,6 +185,7 @@ static char *commit_log_insert(const char *log_message) {
         new_log = str_dup(log_message);
     }
 
+    // Change all '\n' to space
     for (char *c = new_log; *c != '\0'; c++) {
         if (*c == '\n') {
             *c = ' ';
@@ -180,12 +201,11 @@ commit_node_t *commit_node_create(const char *log) {
     new_node->log = commit_log_insert(log);
     new_node->datetime = datetime_now_to_str();
 
+    // Check there has any commit exist
     if (access(".big/Leader", F_OK) == 0) {
         long parent_num = 1;
+        // Just need a parent for write metadata
         new_node->parent = load_parent_info(load_leader(), &parent_num);
-        if (new_node->parent == NULL) {
-            xfree(new_node->parent);
-        }
     } else {
         new_node->parent = NULL;
     }
@@ -196,6 +216,7 @@ commit_node_t *commit_node_create(const char *log) {
         strcpy(parent_id, new_node->parent->commit_hash);
     }
 
+    // Using log, datetime, and parent's hash to create hash make sure no collision
     snprintf(buffer, sizeof(buffer), "%s%s%s", log, new_node->datetime, parent_id);
     new_node->commit_hash = hash_to_string(hash_function(buffer));
 
@@ -210,6 +231,7 @@ void commit_node_free(commit_node_t **node) {
     xfree((*node)->log);
     xfree((*node)->datetime);
     xfree((*node)->commit_hash);
+    // Recurrsive free parent node
     if ((*node)->parent != NULL) {
         commit_node_free(&((*node)->parent));
     }
@@ -218,33 +240,41 @@ void commit_node_free(commit_node_t **node) {
 
 void save_commit_obj(commit_node_t *node) {
     char commit_dir[2048] = {0};
+    // Combine path of commit object
     snprintf(commit_dir, sizeof(commit_dir), ".big/objects/%s", node->commit_hash);
     if (mkdir(commit_dir, 0775) == -1) {
         errno_handle(__func__, __FILE__, __LINE__);
     }
 
     uint64_t content_len;
+    // Get all content in index
     char *index_content = read_whole_file(".big/index", &content_len);
 
     char buffer[4096] = {0};
+    // Combine path of commit index list
     snprintf(buffer, sizeof(buffer), "%s/list", commit_dir);
 
     FILE *list_file = xfopen(buffer, "wb");
+    // Write whole index file to the list
     uint64_t write_bytes = fwrite(index_content, 1, content_len, list_file);
     if (write_bytes != content_len) {
         errno_handle(__func__, __FILE__, __LINE__);
     }
     fclose(list_file);
 
+    // Combine path of commit metadata file
     snprintf(buffer, sizeof(buffer), "%s/info", commit_dir);
 
     FILE *info_file = xfopen(buffer, "w");
+    // First line is datetime
     fprintf(info_file, "%s\n", node->datetime);
+    // Second line is for parent, if no parent, write null instead
     if (node->parent != NULL) {
         fprintf(info_file, "%s\n", node->parent->commit_hash);
     } else {
         fprintf(info_file, "%s\n", "null");
     }
+    // Write whole log into it
     fprintf(info_file, "%s\n", node->log);
     fclose(info_file);
 
@@ -252,6 +282,7 @@ void save_commit_obj(commit_node_t *node) {
 }
 
 void update_leader(const char *branch_name) {
+    // Use write mode to replace old content with new branch that point to
     FILE *leader_file = xfopen(".big/Leader", "w");
     if (fprintf(leader_file, "%s\n", branch_name) < 0) {
         errno_handle(__func__, __FILE__, __LINE__);
@@ -260,6 +291,7 @@ void update_leader(const char *branch_name) {
 }
 
 void update_branch_with_hash(const char *hash) {
+    // If Leader not exist, create one and point to default branch "main"
     if (access(".big/Leader", F_OK) != 0) {
         FILE *leader_file = xfopen(".big/Leader", "w");
         if (fputs("main\n", leader_file) == EOF) {
@@ -268,6 +300,7 @@ void update_branch_with_hash(const char *hash) {
         fclose(leader_file);
     }
 
+    // Read out the branch name inside Leader
     FILE *leader_file = xfopen(".big/Leader", "r");
     char branch_name[2048];
     if (fgets(branch_name, sizeof(branch_name), leader_file) == NULL) {
@@ -277,6 +310,7 @@ void update_branch_with_hash(const char *hash) {
 
     branch_name[strcspn(branch_name, "\n")] = '\0';
 
+    // Write new hash into current branch
     char ref_name[4096];
     snprintf(ref_name, sizeof(ref_name), ".big/refs/%s", branch_name);
     FILE *ref_file = xfopen(ref_name, "w");
@@ -285,6 +319,7 @@ void update_branch_with_hash(const char *hash) {
 }
 
 void update_branch(commit_node_t *node) {
+    // Use commit node's hash for 'commit' command work
     update_branch_with_hash(node->commit_hash);
 }
 
