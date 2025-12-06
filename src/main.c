@@ -12,35 +12,33 @@
 #include "commands/cmd_status.h"
 #include "utils/error_handle.h"
 
-/**
- * @brief Command Table.
- * Maps command names to their handler functions.
- * Ends with {NULL, NULL} as a sentinel.
+/* Command Table
+ * Each command string pair with it's function
+ * End with NULL that is the end point of check
  */
 static const command_t commands[] = {
     {"init", cmd_init},     {"add", cmd_add},           {"commit", cmd_commit}, {"log", cmd_log},
     {"status", cmd_status}, {"checkout", cmd_checkout}, {"branch", cmd_branch}, {NULL, NULL}};
 
-/**
- * @brief Main entry point. Dispatches subcommands.
- */
+// Parse the user input commands from CLI
 int main(int argc, char **argv) {
+    // No command provided from user
     if (argc < 2) {
-        error_input();  // Show usage if no command provided
+        error_input();  // Show usage
     }
 
-    const char *input_cmd = argv[1];
+    const char *input_cmd = argv[1];  // command
 
-    // Iterate through commands until sentinel (NULL) is reached
+    // Iterate through command table until reach NULL
     for (int i = 0; commands[i].cmd_name != NULL; i++) {
         if (strcmp(input_cmd, commands[i].cmd_name) == 0) {
-            // Execute command.
-            // Pass (argc - 1) and (argv + 1) to skip the program name.
+            // Find command that implemented and execute command.
+            // Start from (argc - 1) and (argv + 1) to skip the program name.
             commands[i].cmd(argc - 1, argv + 1);
             return EXIT_SUCCESS;
         }
     }
 
-    error_input();  // Command not found
+    error_input();  // Command not found also show usage
     return EXIT_FAILURE;
 }

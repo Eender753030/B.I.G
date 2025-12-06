@@ -4,47 +4,45 @@
 #include <stdint.h>
 #include <stdio.h>
 
-/**
- * @brief Internal wrapper for fopen with error handling.
- * Use the xfopen() macro instead.
+/* Internal fopen() handle
+ * For error handle inside that can make me not need to type it every time
+ * Use macro as API can pass outer file information instead of internal helper function's
  */
 FILE *_xfopen(const char *target_file_name, const char *modes, const char *func_name,
               const char *file_name, const int line);
 
+/* Internal ftell() handle
+ * Aslo use macro as API
+ */
 long _xftell(FILE *file, const char *func_name, const char *file_name, const int line);
 
+/* Internal getcwd() handle
+ * Aslo use macro as API
+ */
 char *_xgetcwd(const char *func_name, const char *file_name, const int line);
 
-// Macro to capture call site information
+/* Macro of above functions
+ * Can pass GCC magic word from the caller
+ */
 #define xfopen(f, m) _xfopen((f), (m), __func__, __FILE__, __LINE__)
-
 #define xftell(f) _xftell((f), __func__, __FILE__, __LINE__)
-
 #define xgetcwd() _xgetcwd(__func__, __FILE__, __LINE__)
 
+// Return file's length from FILE pointer
 uint64_t get_file_len(FILE *file);
 
-/**
- * @brief Reads the entire content of a file into memory.
- * @param file_name Path to the file.
- * @return Dynamically allocated string containing file content (Caller must free).
+/* Read all content in a file from it's name
+ * Length input can make sure binary file can correctly read
  */
 char *read_whole_file(const char *file_name, uint64_t *len);
 
-/**
- * @brief Creates directories recursively and writes content to the file.
- * Equivalent to "mkdir -p" followed by writing the file.
- * @param path Full path including filename.
- * @param content Content to write to the file.
+/* Create file and directory that the file inside
+ * e.g. for src/utils/file_handle.h
+ *      It will create src/ -> utils/ -> file_handle.h in the order
  */
 void mk_dir_and_file(const char *path, const char *content, uint64_t content_len);
 
-/**
- * @brief Calculates the relative path of a file from the project root.
- * @param org_dir The directory where the user ran the command.
- * @param root_path The target path provided by the user.
- * @return Normalized relative path string (e.g., "src/main.c").
- */
+// Calculate the relative path from the project directory that .big/ locate
 char *relative_path_calc(const char *org_dir, const char *root_path);
 
 #endif

@@ -3,21 +3,19 @@
 
 #include <stdlib.h>
 
-/**
- * @brief Internal function to allocate memory with error handling.
- * NOTE: Use the xmalloc() macro instead of calling this directly.
+/* Internal malloc() handle
+ * For error handle inside that can make me not need to type it every time
+ * Use macro as API can pass outer file information instead of internal helper function's
  */
 void *_xmalloc(size_t size, const char *func_name, const char *file_name, const int line);
 
-/**
- * @brief Macro for safe memory allocation.
- * Automatically passes the current function, file, and line number for error reporting.
+/* Macro of above functions
+ * Can pass GCC magic word from the caller
  */
 #define xmalloc(size) _xmalloc((size), __func__, __FILE__, __LINE__)
 
-/**
- * @brief Macro for safe memory free.
- * This prevents double-free errors and use-after-free bug
+/* Marco for set pointer to NULL after free
+ * Use do while to prevent one line if, for, while statement
  */
 #define xfree(ptr)    \
     do {              \

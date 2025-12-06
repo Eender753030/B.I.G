@@ -23,7 +23,7 @@ static const char usage_hint[] =
     "name\n\n";
 
 void errno_handle(const char *func_name, const char *file_name, const int line) {
-    // strerror(errno) converts the error number to a human-readable string
+    // strerror(errno) converts the error number to a string that can read
     fprintf(stderr, "Error in function '%s' at line %d of %s: %s\n", func_name, line, file_name,
             strerror(errno));
     exit(EXIT_FAILURE);
@@ -31,11 +31,10 @@ void errno_handle(const char *func_name, const char *file_name, const int line) 
 
 void error_custom_msg(const char *msg, ...) {
     va_list args;
-    va_start(args, msg);  // Initialize args to store all values after 'msg'
-    vprintf(msg, args);
+    va_start(args, msg);  // Take out args in ...
+    vprintf(msg, args);   // Print out format string with args
     va_end(args);
 
-    // Custom errors are fatal, so we exit
     exit(EXIT_FAILURE);
 }
 
@@ -47,7 +46,7 @@ void warning_custom_msg(const char *msg, ...) {
 }
 
 void error_input() {
-    fprintf(stderr, "%s\n", usage_hint);
+    fprintf(stderr, "%s\n", usage_hint);  // Print out usage hint string
     exit(EXIT_FAILURE);
 }
 

@@ -8,43 +8,27 @@
 #define INITED true
 #define NOT_INIT false
 
-// Macro to suppress "unused variable" warnings during compilation
+// Macro for cheat the compiler of not to use variable
 #define UNUSED(x) (void)(x)
 
-/**
- * @brief Duplicates a string by allocating new memory.
- * @param string The source string.
- * @return Pointer to the new string (Caller must free it).
+/* Because strdup is POSIX function, so I implement one by myself
+ * It malloc and copy a new string from a string
  */
 char *str_dup(const char *string);
 
-/**
- * @brief Checks if the current directory is inside a B.I.G repository.
- * Traverses upwards looking for the ".big" directory.
- * @return INITED if found, NOT_INIT otherwise.
- */
+// Check that working directory whether in project directory that has .big/ included
 bool check_init();
 
-/**
- * @brief Changes the current working directory to the project root.
- * @param org_dir Optional pointer to store the original directory path before moving.
- */
+// Change working directory to project directory that has .big/ included
 void cd_to_project_root(char **org_dir);
 
-/**
- * @brief Generates a hash using the DJB2 algorithm.
- * @param string Input string.
- * @return Unsigned long hash value.
- */
+// Generate a hash value from a string
 uint64_t hash_function(const char *string);
 
-/**
- * @brief Converts a numeric hash to its hexadecimal string representation.
- * @param hash The hash value.
- * @return Pointer to the hex string (Caller must free it).
- */
+// Return a string that is Hex from hash
 char *hash_to_string(uint64_t hash);
 
+// Return a format string of datetime
 char *datetime_now_to_str();
 
 #endif
