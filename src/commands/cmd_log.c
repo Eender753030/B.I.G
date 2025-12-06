@@ -39,6 +39,8 @@ void cmd_log(int argc, char *argv[]) {
     } else
         error_custom_msg("Usage: big log [-<amount>]\n");
 
+    cd_to_project_root(NULL);
+
     char *leader_id = load_leader();
     if (leader_id == NULL) {
         error_custom_msg("No commit\n");

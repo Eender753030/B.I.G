@@ -14,12 +14,7 @@
 #include "utils/memory.h"
 #include "utils/utils.h"
 
-static void print_branches() {
-    char *curr_branch = load_current_branch();
-    if (curr_branch == NULL) {
-        error_custom_msg("No commit\n");
-    }
-
+static void print_branches(const char *curr_branch) {
     DIR *ref_dir = opendir(".big/refs");
     if (ref_dir == NULL) {
         errno_handle(__func__, __FILE__, __LINE__);
@@ -37,7 +32,6 @@ static void print_branches() {
         }
     }
     closedir(ref_dir);
-    xfree(curr_branch);
 }
 
 static void create_branch(const char *branch_name) {
@@ -86,10 +80,17 @@ void cmd_branch(int argc, char *argv[]) {
 
     cd_to_project_root(NULL);
 
+    char *curr_branch = load_current_branch();
+    if (curr_branch == NULL) {
+        error_custom_msg("No commit\n");
+    }
+
     if (argc == 1) {
-        print_branches();
+        print_branches(curr_branch);
+        xfree(curr_branch);
         return;
     }
+    xfree(curr_branch);
 
     if (strcmp(argv[1], "-d") == 0 || strcmp(argv[1], "--delete") == 0) {
         if (argc < 3 || argc > 3) {
