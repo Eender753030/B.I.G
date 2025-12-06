@@ -5,8 +5,11 @@
 
 #include "utils/memory.h"
 
+/* Stack structure implementaion
+ * Use singly linked list for dynamic growth size
+ */
 typedef struct stack_node {
-    void *data;
+    void *data;  // generic data
     struct stack_node *next;
 } stack_node_t;
 
@@ -44,7 +47,7 @@ void *stack_pop(stack_t *self) {
     stack_node_t *temp = self->top_node;
     self->top_node = self->top_node->next;
     self->size--;
-    xfree(temp);
+    xfree(temp);  // only free the node
     return data;
 }
 
