@@ -111,20 +111,27 @@ void cmd_branch(int argc, char *argv[]) {
         xfree(curr_branch);
         return;
     }
-    xfree(curr_branch);
 
     // Check input has option or not
     // Delete the branch and end this function
     if (strcmp(argv[1], "-d") == 0 || strcmp(argv[1], "--delete") == 0) {
         if (argc < 3 || argc > 3) {
+            xfree(curr_branch);
             error_custom_msg("Usage: big branch -d <branch name>\n");
         }
-        if (strcmp(argv[2], "Leader") == 0 || strcmp(argv[2], "temp_checkout_ref") == 0) {
-            error_custom_msg("'%s' is a unvalid name of branch\n", argv[2]);
+        if (strcmp(argv[2], "main") == 0) {
+            xfree(curr_branch);
+            error_custom_msg("'main' can not be removed\n");
+        }
+        if (strcmp(argv[2], curr_branch) == 0) {
+            xfree(curr_branch);
+            error_custom_msg("Can not remove current branch\n");
         }
         delete_branch(argv[2]);
+        xfree(curr_branch);
         return;
     }
+    xfree(curr_branch);
 
     if (argc > 2) {
         error_custom_msg("Usage: big branch <branch name>\n");
