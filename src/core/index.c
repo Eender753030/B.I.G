@@ -15,19 +15,30 @@
 #include "utils/file_handle.h"
 #include "utils/memory.h"
 
+// A helper function to decide which action from _process_handler to do
 static void _process_parser(snapshot_bst_t *bst, const char *path, bool on_file, bool on_dir,
                             void *args) {
+    // If has args (leader_bst) and on file, means it is from process_path()
+    // Insert for global index
     if (args) {
         snapshot_bst_insert(bst, path, (snapshot_bst_t *)args);
-    } else if (on_file == true) {
+    }
+    // If it only on file, means it is from snapshot_bst_create_from_projectdir()
+    // Insert for project directory BST
+    else if (on_file == true) {
         snapshot_bst_insert_projectdir(bst, path);
-    } else if (on_dir == true) {
+    }
+    // If it only on dir, means it is from snapshot_bst_create_dir_path()
+    // Insert for only directories path BST
+    else if (on_dir == true) {
         snapshot_bst_insert_only_path(bst, path);
     }
 }
 
+// Recurrsive process
 static void _process_handler(snapshot_bst_t *bst, const char *root_path, bool on_file, bool on_dir,
                              void *args) {
+    // Open root directory
     DIR *dir = opendir(root_path);
     if (dir == NULL) {
         errno_handle(__func__, __FILE__, __LINE__);
@@ -35,7 +46,9 @@ static void _process_handler(snapshot_bst_t *bst, const char *root_path, bool on
     struct dirent *file_dirent;
     struct stat file_stat;
 
+    // Start to checking all files and directories
     while ((file_dirent = readdir(dir)) != NULL) {
+        // Skip if meet these
         if (strcmp(file_dirent->d_name, ".") == 0 || strcmp(file_dirent->d_name, "..") == 0 ||
             strcmp(file_dirent->d_name, ".big") == 0 || strcmp(file_dirent->d_name, "big") == 0) {
             continue;
@@ -43,6 +56,7 @@ static void _process_handler(snapshot_bst_t *bst, const char *root_path, bool on
         char pathbuffer[1024];
         char *c;
 
+        // Combime the root directory path and next file or directory path
         if (strcmp(root_path, ".") == 0) {
             snprintf(pathbuffer, sizeof(pathbuffer), "%s", file_dirent->d_name);
         } else if ((c = strrchr(root_path, '/')) != NULL && *(c + 1) == '\0') {
@@ -52,29 +66,38 @@ static void _process_handler(snapshot_bst_t *bst, const char *root_path, bool on
             snprintf(pathbuffer, sizeof(pathbuffer), "%s/%s", root_path, file_dirent->d_name);
         }
 
+        // Get file's or directory's status
         if (stat(pathbuffer, &file_stat) == -1) {
             errno_handle(__func__, __FILE__, __LINE__);
         }
 
+        // Check is directory
         if (S_ISDIR(file_stat.st_mode)) {
+            // If is, keep go into the directory
             _process_handler(bst, pathbuffer, on_file, on_dir, args);
+            // Parse the action on directory
             if (on_dir == true) {
                 _process_parser(bst, pathbuffer, NULL, on_dir, args);
             }
         } else {
+            // This means is a file, parse the action on file
             if (on_file == true) {
                 _process_parser(bst, pathbuffer, on_file, NULL, args);
             }
         }
     }
-
+    // Use closedir() instead of free()
     closedir(dir);
 }
 
+// Helper function that write index file content
+// Use in inorder travesal make index file is sorted
 static void write_index(void *file_info, void *file_t) {
     char *path, *hash;
     bool is_changed;
+    // Get file info that contains path, hash, and is_changed data
     file_info_get_content(file_info, &path, &hash, &is_changed);
+    // write all into file_t file
     if (fprintf(file_t, "%s\t%s\t%d\n", path, hash, is_changed) == -1) {
         errno_handle(__func__, __FILE__, __LINE__);
     }
@@ -92,45 +115,55 @@ void save_index_file(snapshot_bst_t *bst) {
 
     FILE *index_file = xfopen(".big/index", "w");
 
+    // First line in index file is the amount of path
     if (fprintf(index_file, "%lu\n", bst_amount) == -1) {
         errno_handle(__func__, __FILE__, __LINE__);
     }
 
+    // Pass write_index() function pointer make index file's content is sorted
     bst_inorder_func(bst, write_index, index_file);
 
     fclose(index_file);
 }
 
+//
 snapshot_bst_t *read_index_file_from_path(const char *path) {
     FILE *index_file = fopen(path, "r");
+    // If index not exist, just return a empty BST
     if (index_file == NULL) {
         return snapshot_bst_create();
     }
 
     uint64_t total_size;
+    // Read first line of index to get the amount of path
     if (fscanf(index_file, "%lu\n", &total_size) == -1) {
         fclose(index_file);
         return snapshot_bst_create();
     }
 
+    // Malloc() a file_info list to store all path, hash, and is_changed data for create a BST
     file_info_t **file_info_list = xmalloc(sizeof(*file_info_list) * total_size);
 
     uint64_t idx = 0;
     char path_buffer[960];
     char hash_buffer[64];
     int is_changed_temp;
+    // Loop read lines of content in index
     while (idx < total_size && fscanf(index_file, "%959[^\t]\t%s\t%d\n", path_buffer, hash_buffer,
                                       &is_changed_temp) == 3) {
+        // Add all data to list
         file_info_list[idx++] =
             file_info_create_from_index(path_buffer, hash_buffer, is_changed_temp != 0);
     }
 
+    // Check the amount is correct
     if (idx != total_size) {
         warning_custom_msg("Warning: index file mismatch\n");
     }
 
     fclose(index_file);
 
+    // Create a balaned BST from sorted index
     snapshot_bst_t *new_bst = snapshot_bst_create_from_list(file_info_list, total_size);
 
     xfree(file_info_list);
@@ -138,10 +171,12 @@ snapshot_bst_t *read_index_file_from_path(const char *path) {
     return new_bst;
 }
 
+// Call read_index_file_from_path() use path of global index
 snapshot_bst_t *read_index_file() {
     return read_index_file_from_path(".big/index");
 }
 
+// For 'add' command use to add files into index
 void process_path(snapshot_bst_t *bst, const char *path, snapshot_bst_t *leader_bst) {
     if (bst == NULL || path == NULL) {
         return;
@@ -150,22 +185,16 @@ void process_path(snapshot_bst_t *bst, const char *path, snapshot_bst_t *leader_
     _process_handler(bst, path, true, false, (void *)leader_bst);
 }
 
-static void process_path_projectdir(snapshot_bst_t *bst, const char *path) {
-    _process_handler(bst, path, true, false, NULL);
-}
-
-static void process_dir_path(snapshot_bst_t *bst, const char *path) {
-    _process_handler(bst, path, false, true, NULL);
-}
-
+// Create a BST of project directory for 'status' command to compare
 snapshot_bst_t *snapshot_bst_create_from_projectdir() {
     snapshot_bst_t *new_dir_bst = snapshot_bst_create();
-    process_path_projectdir(new_dir_bst, ".");
+    _process_handler(new_dir_bst, ".", true, false, NULL);
     return new_dir_bst;
 }
 
+// Create a BST of only directory path for 'checkout' command to delete directory
 snapshot_bst_t *snapshot_bst_create_dir_path() {
     snapshot_bst_t *new_dir_path_bst = snapshot_bst_create();
-    process_dir_path(new_dir_path_bst, ".");
+    _process_handler(new_dir_path_bst, ".", false, true, NULL);
     return new_dir_path_bst;
 }
