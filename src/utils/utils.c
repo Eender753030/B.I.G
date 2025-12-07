@@ -51,6 +51,7 @@ bool check_init() {
         }
     } while (strcmp(cwd, "/"));  // Stop if already in root directory /
 
+    xfree(cwd);
     xfree(org_dir);
     return NOT_INIT;
 }

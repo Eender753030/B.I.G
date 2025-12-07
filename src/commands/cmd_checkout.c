@@ -177,7 +177,7 @@ void cmd_checkout(int argc, char *argv[]) {
     // Check the hash is exist or not
     snprintf(target_list_path, sizeof(target_list_path), ".big/objects/%s/list", target_hash);
     if (access(target_list_path, F_OK) != 0) {
-        error_custom_msg("Error: Target commit or branch '%s' does not exist.\n", target_hash);
+        error_custom_msg("Error: Target commit or branch '%s' does not exist\n", target_hash);
     }
 
     char *leader_hash = load_leader();
@@ -185,6 +185,12 @@ void cmd_checkout(int argc, char *argv[]) {
     if (leader_hash == NULL) {
         error_custom_msg("No commit\n");
     }
+
+    // Check is current hash
+    if (branch_mode == false && strcmp(leader_hash, target_hash) == 0) {
+        error_custom_msg("Error: Already in '%s'\n", target_hash);
+    }
+
     char leader_list_path[1024];
     snprintf(leader_list_path, sizeof(leader_list_path), ".big/objects/%s/list", leader_hash);
     xfree(leader_hash);
