@@ -145,6 +145,10 @@ static char *path_normalize(const char *path) {
     // Combine each part of path
     // depth is 0 means it is in current directory
     if (depth == 0) {
+        // Error check for the length
+        if (strlen(path) + 3 > sizeof(path_buffer)) {
+            error_custom_msg("path too long\n");
+        }
         snprintf(path_buffer, sizeof(path_buffer), "%s/.", path);
     } else {
         for (uint16_t i = 0; i < depth; i++) {

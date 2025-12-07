@@ -26,18 +26,29 @@ bool check_init() {
     // Save current directory to return later
     char *org_dir = xgetcwd();
 
-    char cwd[4096];
+    char *cwd = NULL;
     // Keep changing working directory to parent when meet .big\ or root directory /
     do {
-        getcwd(cwd, 4096);  // Get current directory
+        xfree(cwd);
+        cwd = xgetcwd();  // Get current directory
 
         // Check if .big/ exists in the current directory
         if (access(".big", F_OK) != -1) {
-            chdir(org_dir);  // Return to original directory
+            xfree(cwd);
+            // Return to original directory
+            if (chdir(org_dir) == -1) {
+                xfree(org_dir);
+                errno_handle(__func__, __FILE__, __LINE__);
+            }
             xfree(org_dir);
             return INITED;
         }
-        chdir("..");  // Move to parent directory
+        // Move to parent directory
+        if (chdir("..") == -1) {
+            xfree(cwd);
+            xfree(org_dir);
+            errno_handle(__func__, __FILE__, __LINE__);
+        }
     } while (strcmp(cwd, "/"));  // Stop if already in root directory /
 
     xfree(org_dir);

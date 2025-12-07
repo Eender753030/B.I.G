@@ -85,7 +85,12 @@ commit_node_t *load_parent_info(char *commit_id, long *limit_amount) {
     char buffer[128] = {0};
 
     // Get parent node's datetime
-    fgets(buffer, 128, parent_info);
+    if (fgets(buffer, 128, parent_info) == NULL) {
+        fclose(parent_info);
+        xfree(parent_node);
+        xfree(commit_id);
+        return NULL;
+    }
     buffer[strcspn(buffer, "\n")] = '\0';
     parent_node->datetime = str_dup(buffer);
 
@@ -106,7 +111,13 @@ commit_node_t *load_parent_info(char *commit_id, long *limit_amount) {
     parent_node->log = xmalloc(log_length + 1);
 
     // Read last file content that is log
-    fread(parent_node->log, 1, log_length, parent_info);
+    uint64_t read_bytes = fread(parent_node->log, 1, log_length, parent_info);
+    if (read_bytes != log_length) {
+        fclose(parent_info);
+        commit_node_free(&parent_node);
+        return NULL;
+    }
+
     parent_node->log[log_length] = '\0';
 
     fclose(parent_info);
@@ -135,7 +146,12 @@ static char *log_file_handle() {
     char *log = xmalloc(content_length);
 
     // Read all content below first line
-    fread(log, 1, content_length, log_file);
+    uint64_t read_bytes = fread(log, 1, content_length, log_file);
+    if (read_bytes != content_length) {
+        fclose(log_file);
+        xfree(log);
+        error_custom_msg("Commit operation cancelled\n");
+    }
     log[content_length - 1] = '\0';
 
     fclose(log_file);

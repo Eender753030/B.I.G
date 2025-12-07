@@ -7,7 +7,7 @@ BIN_DIR = bin
 TEST_DIR = tests
 TEST_BIN_DIR = ${BIN_DIR}/tests
 
-CFLAGS = -Wall -Wextra -Wconversion -Wpedantic -Werror -g -fsanitize=address -I${INC_DIR} # Strict compiler to find more error and warrning also check memory leak
+CFLAGS = -O2 -Wall -Wextra -Wconversion -Wpedantic -Werror -g -fsanitize=address -I${INC_DIR} # Strict compiler to find more error and warrning also check memory leak
 LFLAGS = -fsanitize=address
 
 TARGET = ${BIN_DIR}/big

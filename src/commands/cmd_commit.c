@@ -18,14 +18,11 @@ void cmd_commit(int argc, char *argv[]) {
         error_not_init();
     }
 
-    char *log_message;
-
     // Only 'big commit' for input, use editor to write log
-    if (argc == 1) {
-        log_message = NULL;
-    }
+    char *log_message = NULL;
+
     // Use 'big commit -m <"msg"> for input, "msg" is the log
-    else {
+    if (argc > 1) {
         if (strcmp(argv[1], "-m") == 0 && argc == 3) {
             log_message = argv[2];
         } else {
