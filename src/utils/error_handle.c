@@ -51,7 +51,8 @@ void error_input() {
 }
 
 void error_not_init() {
-    fprintf(stderr,
-            "Error: Not a initalized directory. Use 'big init' to initalize current directory\n");
+    fprintf(
+        stderr,
+        "Error: Not an initialized directory. Use 'big init' to initialize current directory\n");
     exit(EXIT_FAILURE);
 }

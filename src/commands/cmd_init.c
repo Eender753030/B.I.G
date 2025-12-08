@@ -20,11 +20,11 @@ void cmd_init(int argc, char *argv[]) {
 
     // Exit if .big/ is already exist
     if (access(".big", F_OK) != -1) {
-        error_custom_msg("Error: Directory already initalize. Operation cancelled\n");
+        error_custom_msg("Error: Directory already initalized. Operation cancelled\n");
     }
-    printf("Start to initalize B.I.G structure...\n");
+    printf("Start to initialize B.I.G structure...\n");
 
-    // Initalize current directory to project directory
+    // Initialize current directory to project directory
     // Create essential directories
     if (mkdir(".big", 0775) == -1) {
         errno_handle(__func__, __FILE__, __LINE__);
@@ -35,5 +35,5 @@ void cmd_init(int argc, char *argv[]) {
     if (mkdir(".big/refs", 0775) == -1) {
         errno_handle(__func__, __FILE__, __LINE__);
     }
-    printf("Directory initalize complete\n");
+    printf("Directory initialize complete\n");
 }
