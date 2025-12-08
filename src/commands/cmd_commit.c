@@ -35,11 +35,6 @@ void cmd_commit(int argc, char *argv[]) {
 
     // Read out BST of global index
     snapshot_bst_t *index_bst = read_index_file();
-    if (bst_get_amount(index_bst) == 0) {
-        // 0 means no staged file
-        snapshot_bst_free(&index_bst);
-        error_custom_msg("Error: Nothing to commit\n");
-    }
 
     char *leader_hash = load_leader();
     // If has previous commit
@@ -60,6 +55,12 @@ void cmd_commit(int argc, char *argv[]) {
 
         snapshot_bst_free(&leader_bst);
         xfree(leader_hash);
+    } else {
+        // First commit
+        if (bst_get_amount(index_bst) == 0) {
+            snapshot_bst_free(&index_bst);
+            error_custom_msg("Error: Nothing to commit\n");
+        }
     }
 
     snapshot_bst_free(&index_bst);
