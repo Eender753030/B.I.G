@@ -35,7 +35,12 @@ static void _process_parser(snapshot_bst_t *bst, const char *path, bool on_file,
     }
 }
 
-// Recurrsive process
+/* Recursive Directory Traversal
+ * We need to scan directory in commands 'add', 'status', and 'checkout'
+ * There are three different BST use in those commands
+ * I use <dirent.h> with recursive to traversal directory
+ * And use <sys/stat.h> to judge is file or directory
+ */
 static void _process_handler(snapshot_bst_t *bst, const char *root_path, bool on_file, bool on_dir,
                              bool have_leader, void *args) {
     // Open root directory
@@ -108,9 +113,6 @@ void save_index_file(snapshot_bst_t *bst) {
     }
 
     uint64_t bst_amount = bst_get_amount(bst);
-    if (bst_amount == 0) {
-        return;
-    }
 
     FILE *index_file = xfopen(".big/index", "w");
 
@@ -120,8 +122,9 @@ void save_index_file(snapshot_bst_t *bst) {
     }
 
     // Pass write_index() function pointer make index file's content is sorted
-    bst_inorder_func(bst, write_index, index_file);
-
+    if (bst_amount != 0) {
+        bst_inorder_func(bst, write_index, index_file);
+    }
     fclose(index_file);
 }
 
@@ -136,6 +139,11 @@ snapshot_bst_t *read_index_file_from_path(const char *path) {
     uint64_t total_size;
     // Read first line of index to get the amount of path
     if (fscanf(index_file, "%lu\n", &total_size) == -1) {
+        fclose(index_file);
+        return snapshot_bst_create();
+    }
+
+    if (total_size == 0) {
         fclose(index_file);
         return snapshot_bst_create();
     }

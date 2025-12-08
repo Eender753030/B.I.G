@@ -32,6 +32,12 @@ bst_node_t* bst_node_create(void* data) {
     return new_node;
 }
 
+/* Generic Binary Search Tree
+ * For the BST data structure can be reused in future
+ * I use void* pointer to store data,
+ * and function pointer (cmp_callback) can let user decide how to compare data to build BST
+ * That can make bst.c is completely independent, totally no need to know like "Index" or "Commit"
+ */
 bst_t* bst_create(int8_t (*cmp_callback)(void*, void*)) {
     bst_t* new_bst = xmalloc(sizeof(*new_bst));
 

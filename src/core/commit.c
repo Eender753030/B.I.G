@@ -131,7 +131,8 @@ static char *log_file_handle() {
 
     char c;
     // First line is hint so skip it
-    while ((c = (char)fgetc(log_file)) != EOF && c != '\n');
+    while ((c = (char)fgetc(log_file)) != EOF && c != '\n')
+        ;
     // If Second line reach to end of file means no input log, cancel 'commit' command
     if ((c = (char)fgetc(log_file)) == EOF) {
         fclose(log_file);
@@ -254,6 +255,10 @@ void commit_node_free(commit_node_t **node) {
     xfree((*node));
 }
 
+/* The Implicit Graph
+ * Here is where the Implicit Graph start formation
+ * Every node simply record its parent
+ */
 void save_commit_obj(commit_node_t *node) {
     char commit_dir[2048] = {0};
     // Combine path of commit object
@@ -270,6 +275,7 @@ void save_commit_obj(commit_node_t *node) {
     // Combine path of commit index list
     snprintf(buffer, sizeof(buffer), "%s/list", commit_dir);
 
+    // The metadata
     FILE *list_file = xfopen(buffer, "wb");
     // Write whole index file to the list
     uint64_t write_bytes = fwrite(index_content, 1, content_len, list_file);
@@ -285,6 +291,7 @@ void save_commit_obj(commit_node_t *node) {
     // First line is datetime
     fprintf(info_file, "%s\n", node->datetime);
     // Second line is for parent, if no parent, write null instead
+    // Here we create the DAG's edge
     if (node->parent != NULL) {
         fprintf(info_file, "%s\n", node->parent->commit_hash);
     } else {

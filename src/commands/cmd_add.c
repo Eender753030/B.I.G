@@ -36,7 +36,8 @@ static void delete_file_in_dir(const char *dir_path, snapshot_bst_t *bst, bool d
 
     // Perpare a delete list max amount same as BST
     char **delete_list = xmalloc(sizeof(*delete_list) * bst_amount);
-    uint16_t delete_count = 0;
+    uint64_t delete_count = 0;
+    uint64_t dir_len = strlen(dir_path);
 
     for (uint64_t i = 0; i < bst_amount; i++) {
         char *file_info_path;
@@ -50,8 +51,11 @@ static void delete_file_in_dir(const char *dir_path, snapshot_bst_t *bst, bool d
         } else {
             // Compare file and directory name with length of directory name
             // If is the same, means file in this directory
-            if (strncmp(file_info_path, dir_path, strlen(dir_path)) == 0) {
-                is_in_dir = true;
+            if (strncmp(file_info_path, dir_path, dir_len) == 0) {
+                // Make sure is end with '/'
+                if (file_info_path[dir_len] == '\0' || file_info_path[dir_len] == '/') {
+                    is_in_dir = true;
+                }
             }
         }
 
@@ -146,7 +150,7 @@ void cmd_add(int argc, char *argv[]) {
     cd_to_project_root(&org_dir);
 
     // Get a builded BST from index file
-    // This is a balance BST
+    // This is a balanced BST (empty BST for first time)
     snapshot_bst_t *snapshot_bst = read_index_file();
 
     char *leader_hash = NULL;
@@ -160,7 +164,7 @@ void cmd_add(int argc, char *argv[]) {
         xfree(leader_hash);
     }
 
-    // Start to parse inputs
+    // Main process of user's input
     struct stat file_stat;
     for (uint64_t i = 0; i < input_size; i++) {
         // Get the relative path of file to project directory
@@ -169,6 +173,7 @@ void cmd_add(int argc, char *argv[]) {
             // delete mode for 'big add -d'
             delete_file_in_dir(normalized_path, snapshot_bst, true);
         } else {
+            // Normal add file
             process_dir_or_file(normalized_path, snapshot_bst, &file_stat, leader_bst);
         }
         xfree(normalized_path);
