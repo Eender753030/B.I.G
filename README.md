@@ -1,6 +1,7 @@
 # B.I.G: A BST-Indexed Graph Model for Version Control
 
 **Course:** Data Structures
+
 **Developer:** Eender  
 
 ---
