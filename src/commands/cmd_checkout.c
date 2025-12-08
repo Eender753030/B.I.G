@@ -161,6 +161,16 @@ void cmd_checkout(int argc, char *argv[]) {
     // Check input targe is branch or not
     bool branch_mode = check_is_branch(argv[1]);
 
+    // If change to current branch, stop the operation
+    if (branch_mode == true) {
+        char *cuurent_branch = load_current_branch();
+        if (strcmp(cuurent_branch, argv[1]) == 0) {
+            xfree(cuurent_branch);
+            error_custom_msg("Error: Already in branch '%s'\n", argv[1]);
+        }
+        xfree(cuurent_branch);
+    }
+
     char *target_hash;
     // If is branch, load the hash in branch file
     if (branch_mode == true) {
@@ -177,18 +187,33 @@ void cmd_checkout(int argc, char *argv[]) {
     // Check the hash is exist or not
     snprintf(target_list_path, sizeof(target_list_path), ".big/objects/%s/list", target_hash);
     if (access(target_list_path, F_OK) != 0) {
+        if (branch_mode == true) {
+            xfree(target_hash);
+        }
         error_custom_msg("Error: Target commit or branch '%s' does not exist\n", target_hash);
     }
 
     char *leader_hash = load_leader();
     // No commit can not checkout
     if (leader_hash == NULL) {
+        if (branch_mode == true) {
+            xfree(target_hash);
+        }
         error_custom_msg("No commit\n");
     }
 
     // Check is current hash
-    if (branch_mode == false && strcmp(leader_hash, target_hash) == 0) {
-        error_custom_msg("Error: Already in '%s'\n", target_hash);
+    if (strcmp(leader_hash, target_hash) == 0) {
+        // If is branch mode, just change the Leader point
+        if (branch_mode == true) {
+            update_leader(argv[1]);
+            xfree(leader_hash);
+            xfree(target_hash);
+            printf("Change to branch: %s\n", argv[1]);
+            return;
+        } else {
+            error_custom_msg("Error: Already in '%s'\n", target_hash);
+        }
     }
 
     char leader_list_path[1024];
