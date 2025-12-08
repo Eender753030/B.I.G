@@ -164,6 +164,10 @@ void cmd_checkout(int argc, char *argv[]) {
     // If change to current branch, stop the operation
     if (branch_mode == true) {
         char *cuurent_branch = load_current_branch();
+        if (cuurent_branch == NULL) {
+            xfree(cuurent_branch);
+            error_custom_msg("No commit\n");
+        }
         if (strcmp(cuurent_branch, argv[1]) == 0) {
             xfree(cuurent_branch);
             error_custom_msg("Error: Already in branch '%s'\n", argv[1]);
@@ -202,23 +206,8 @@ void cmd_checkout(int argc, char *argv[]) {
         error_custom_msg("No commit\n");
     }
 
-    // Check is current hash
-    if (strcmp(leader_hash, target_hash) == 0) {
-        // If is branch mode, just change the Leader point
-        if (branch_mode == true) {
-            update_leader(argv[1]);
-            xfree(leader_hash);
-            xfree(target_hash);
-            printf("Change to branch: %s\n", argv[1]);
-            return;
-        } else {
-            error_custom_msg("Error: Already in '%s'\n", target_hash);
-        }
-    }
-
     char leader_list_path[1024];
     snprintf(leader_list_path, sizeof(leader_list_path), ".big/objects/%s/list", leader_hash);
-    xfree(leader_hash);
 
     snapshot_bst_t *dir_bst = snapshot_bst_create_from_projectdir();
     snapshot_bst_t *index_bst = read_index_file();
@@ -226,12 +215,35 @@ void cmd_checkout(int argc, char *argv[]) {
     // Compare three BST is the same otherwise for safety, checkout operation is not allowed
     if (is_same_bst(leader_bst, index_bst, is_same_file_info) == false ||
         search_and_cmp_is_same(index_bst, dir_bst) == false) {
+        xfree(leader_hash);
+        if (branch_mode == true) {
+            xfree(target_hash);
+        }
         snapshot_bst_free(&leader_bst);
         snapshot_bst_free(&index_bst);
         snapshot_bst_free(&dir_bst);
         error_custom_msg(
             "Error: There are changes not commit. Please commit first or discard changes\n");
     }
+
+    // Check is current hash
+    if (strcmp(leader_hash, target_hash) == 0) {
+        xfree(leader_hash);
+        xfree(target_hash);
+        snapshot_bst_free(&leader_bst);
+        snapshot_bst_free(&index_bst);
+        snapshot_bst_free(&dir_bst);
+
+        // If is branch mode, just change the Leader point
+        if (branch_mode == true) {
+            update_leader(argv[1]);
+            printf("Change to branch: %s\n", argv[1]);
+            return;
+        } else {
+            error_custom_msg("Error: Already in '%s'\n", target_hash);
+        }
+    }
+    xfree(leader_hash);
 
     snapshot_bst_t *dir_path_bst = snapshot_bst_create_dir_path();
     // Delete whole files and directories in project directory
