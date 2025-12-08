@@ -60,7 +60,11 @@ char *blob_create_from_file(const char *path) {
         if (obj_file == NULL) {
             error_custom_msg("Failed to write object file: %s\n", object_path);
         }
-        fwrite(content, 1, file_len, obj_file);
+        uint64_t write_bytes = fwrite(content, 1, file_len, obj_file);
+        if (write_bytes != file_len) {
+            fclose(obj_file);
+            error_custom_msg("Error: Write object content failed\n");
+        }
         fclose(obj_file);
     }
 

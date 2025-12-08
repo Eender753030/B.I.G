@@ -17,10 +17,10 @@
 
 // A helper function to decide which action from _process_handler to do
 static void _process_parser(snapshot_bst_t *bst, const char *path, bool on_file, bool on_dir,
-                            void *args) {
+                            bool have_leader, void *args) {
     // If has args (leader_bst) and on file, means it is from process_path()
     // Insert for global index
-    if (args) {
+    if (on_file == true && have_leader == true) {
         snapshot_bst_insert(bst, path, (snapshot_bst_t *)args);
     }
     // If it only on file, means it is from snapshot_bst_create_from_projectdir()
@@ -37,7 +37,7 @@ static void _process_parser(snapshot_bst_t *bst, const char *path, bool on_file,
 
 // Recurrsive process
 static void _process_handler(snapshot_bst_t *bst, const char *root_path, bool on_file, bool on_dir,
-                             void *args) {
+                             bool have_leader, void *args) {
     // Open root directory
     DIR *dir = opendir(root_path);
     if (dir == NULL) {
@@ -70,19 +70,18 @@ static void _process_handler(snapshot_bst_t *bst, const char *root_path, bool on
         if (stat(pathbuffer, &file_stat) == -1) {
             errno_handle(__func__, __FILE__, __LINE__);
         }
-
         // Check is directory
         if (S_ISDIR(file_stat.st_mode)) {
             // If is, keep go into the directory
-            _process_handler(bst, pathbuffer, on_file, on_dir, args);
+            _process_handler(bst, pathbuffer, on_file, on_dir, have_leader, args);
             // Parse the action on directory
             if (on_dir == true) {
-                _process_parser(bst, pathbuffer, NULL, on_dir, args);
+                _process_parser(bst, pathbuffer, NULL, on_dir, have_leader, args);
             }
         } else {
             // This means is a file, parse the action on file
             if (on_file == true) {
-                _process_parser(bst, pathbuffer, on_file, NULL, args);
+                _process_parser(bst, pathbuffer, on_file, NULL, have_leader, args);
             }
         }
     }
@@ -182,19 +181,19 @@ void process_path(snapshot_bst_t *bst, const char *path, snapshot_bst_t *leader_
         return;
     }
 
-    _process_handler(bst, path, true, false, (void *)leader_bst);
+    _process_handler(bst, path, true, false, true, (void *)leader_bst);
 }
 
 // Create a BST of project directory for 'status' command to compare
 snapshot_bst_t *snapshot_bst_create_from_projectdir() {
     snapshot_bst_t *new_dir_bst = snapshot_bst_create();
-    _process_handler(new_dir_bst, ".", true, false, NULL);
+    _process_handler(new_dir_bst, ".", true, false, false, NULL);
     return new_dir_bst;
 }
 
 // Create a BST of only directory path for 'checkout' command to delete directory
 snapshot_bst_t *snapshot_bst_create_dir_path() {
     snapshot_bst_t *new_dir_path_bst = snapshot_bst_create();
-    _process_handler(new_dir_path_bst, ".", false, true, NULL);
+    _process_handler(new_dir_path_bst, ".", false, true, false, NULL);
     return new_dir_path_bst;
 }
