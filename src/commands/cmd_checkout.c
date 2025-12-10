@@ -266,6 +266,7 @@ void cmd_checkout(int argc, char *argv[]) {
     else {
         create_temp_ref(target_hash);
         update_leader("temp_checkout_ref");
+        printf("Change to hash: %s in branch temp_checkout_ref\n", argv[1]);
     }
     // Update the global index file for target hash or branch
     save_index_file(target_commit_bst);
