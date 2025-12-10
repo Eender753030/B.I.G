@@ -229,7 +229,9 @@ void cmd_checkout(int argc, char *argv[]) {
     // Check is current hash
     if (strcmp(leader_hash, target_hash) == 0) {
         xfree(leader_hash);
-        xfree(target_hash);
+        if (branch_mode == true) {
+            xfree(target_hash);
+        }
         snapshot_bst_free(&leader_bst);
         snapshot_bst_free(&index_bst);
         snapshot_bst_free(&dir_bst);
