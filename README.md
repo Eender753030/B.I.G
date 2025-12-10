@@ -79,7 +79,7 @@ Add the binary to your environment variables or move it to your project folder.
 export PATH="$PATH:/path/to/your/B.I.G/bin"
 ```
 
-## VI. [cite_start]Usage Commands [cite: 303-311]
+## VI. Usage Commands
 
 | Command                      | Description                                                    |
 | :--------------------------- | :------------------------------------------------------------- |
@@ -102,7 +102,7 @@ $ big status
 
 Commit changes:
 ```bash
-$ big commit -m "Feat: First commit"
+$ big commit -m "feat: First commit"
 ```
 
 Create a branch and checkout:
