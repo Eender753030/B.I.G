@@ -101,9 +101,10 @@ $ big add src/main.c include/
 $ big status
 ```
 
-Commit changes:
+Commit changes and show logs:
 ```bash
 $ big commit -m "feat: First commit"
+$ big log
 ```
 
 Create a branch and checkout:
