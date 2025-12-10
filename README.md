@@ -87,7 +87,7 @@ export PATH="$PATH:/path/to/your/B.I.G/bin"
 | `big init`                   | Initialize the current directory as the project root.          |
 | `big add [-d] <file/dir>`    | Add files to the Index (Staging Area). Use `-d` to delete.     |
 | `big commit [-m <msg>]`      | Commit the staged files. Opens Nano if no message is provided. |
-| `big log [<amount>]`         | Show commit history logs.                                      |
+| `big log [-<amount>]`         | Show commit history logs.                                      |
 | `big status`                 | Show the status of files (untracked, modified, staged).        |
 | `big checkout <hash/branch>` | Restore files to a specific commit or switch branches.         |
 | `big branch [-d] <name>`     | List branches or create a new branch.                          |
