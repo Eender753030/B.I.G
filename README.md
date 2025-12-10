@@ -61,6 +61,7 @@ The system follows a **Four-Layered Architecture**:
 ---
 
 ## V. Build & Installation
+**Note: This program can only execute on Linux**
 
 ### 1. Compile
 Run `make` in the project root to compile all source files.
