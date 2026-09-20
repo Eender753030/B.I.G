@@ -46,7 +46,7 @@ The system follows a **Four-Layered Architecture**:
 ### Core Objects
 * **Project Directory:** The root directory containing `.big/`.
 * **Index (Staging Area):** Maintains a list of tracked files (path and blob hash) before committing.
-* **Blob:** The fundamental unit of data storage. The filename is the **SHA-1 hash** of its content (deduplication).
+* **Blob:** The fundamental unit of data storage. The filename is the **DJB2 hash** of its content (deduplication).
 * **Commit:** A snapshot folder containing the file list, metadata (log, date), and parent hash.
 * **Branch:** A movable pointer (reference) to a specific commit hash.
 * **Leader (HEAD):** A pointer recording "where we are" (usually points to a Branch reference).
