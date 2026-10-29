@@ -2,7 +2,7 @@
 
 **Course:** Data Structures
 
-**Developer:** Eender  
+**Developer:** TSAI, TZUNG-HAN  
 
 ---
 
