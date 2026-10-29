@@ -4,6 +4,9 @@
 
 **Developer:** TSAI, TZUNG-HAN  
 
+### screenshot
+![B.I.G screenshot-main](./assets/screenshot-main.png)
+
 ---
 
 ## I. Introduction
